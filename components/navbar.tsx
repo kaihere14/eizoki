@@ -6,6 +6,8 @@ import Link from "next/link";
 import { Search, Plus, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useLoginModal } from "@/components/login-modal";
+import { AccountControl } from "@/components/auth/account-control";
+import { useUser } from "@clerk/nextjs";
 
 interface NavbarProps {
   onSearchClick?: () => void;
@@ -75,7 +77,8 @@ export function Navbar({ onSearchClick, onSubmitClick, onLoginClick }: NavbarPro
   const { openLoginModal } = useLoginModal();
 
   const handleLoginClick = onLoginClick ?? openLoginModal;
-  const handleSubmitClick = onSubmitClick ?? openLoginModal;
+  const { isSignedIn } = useUser();
+  const handleSubmitClick = onSubmitClick ?? (isSignedIn ? undefined : openLoginModal);
 
   const [hoveredBrandItem, setHoveredBrandItem] = useState<"logo" | "text" | null>(null);
   const [boxRect, setBoxRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
@@ -367,14 +370,7 @@ export function Navbar({ onSearchClick, onSubmitClick, onLoginClick }: NavbarPro
               )}
             </AnimatePresence>
 
-            {/* Login button with #3074FE and 3D top-light highlight */}
-            <button
-              type="button"
-              onClick={handleLoginClick}
-              className="relative z-10 px-3.5 py-1 rounded-full text-[12.5px] font-medium bg-[#3074FE] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_2px_4px_rgba(48,116,254,0.3)] border border-white/20 active:scale-[0.97] hover:bg-[#2568f2] transition-[background-color,transform,box-shadow] duration-150 ease-out cursor-pointer"
-            >
-              Login
-            </button>
+            <AccountControl onLogin={handleLoginClick} />
             {/* Favourites & Info share the sliding highlight */}
             <Link
               ref={favouritesRef}

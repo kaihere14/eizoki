@@ -89,3 +89,59 @@ Eizoki organizes work across distinct, evolving creative disciplines:
 ## ✦ Development & Architecture
 
 Refer to [agent/agent.md](file:///Applications/Coding/Serious/eizoki/agent/agent.md) for technical design, data schemas, design tokens, coding standards, and agent operational rules.
+
+## Authentication
+
+Clerk manages sessions behind Eizoki's custom popup. There are no prebuilt sign-in,
+sign-up, or user-menu components. Email uses a verification code for both new and
+returning users; Google and X use redirect-based OAuth. `/sign-in` opens the same
+popup, `/sign-in/continue` collects missing OAuth signup information, and
+`/sso-callback` handles the provider callback. Clerk's callback handler may display
+a required bot challenge.
+
+### Local setup
+
+Run `bun install`. Link the Eizoki Clerk application with `clerk link --app <app-id>`
+and run `clerk env pull` to write development keys to the ignored `.env.local`.
+Alternatively, copy `.env.example` and fill in your keys locally. Keep the secret key
+server-only. Start the app with `bun dev`.
+
+In the Clerk instance, configure:
+
+- Open signup; required email, verification at signup, and email-code sign-in
+- Passwords disabled; no required phone number, username, first name, or last name
+- Google and X enabled for authentication
+- Custom sign-in and signup URLs set to `/sign-in`
+
+The catalogue remains public. Any future private API or Server Action must use
+server-side `auth()`/`auth.protect()`; hiding a client control does not protect data.
+No organization, password-reset, or MFA-enrollment session tasks are enabled for
+this app. If those settings change, implement the matching custom session-task
+screens first. Pending sessions are blocked instead of treated as signed in.
+
+### Verification
+
+With the local app running and development keys configured:
+
+```sh
+bunx playwright install chromium
+bun run test:auth
+bun run lint
+bun run build
+```
+
+`PLAYWRIGHT_TEST_BASE_URL` can target another local port. An existing browser can
+be selected using `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`. The auth tests refuse
+production keys, use Clerk's reserved test emails, and delete their test accounts.
+They cover signup, returning-user login, invalid codes, cooldown, session
+persistence, sign-out, mobile dismissal, OAuth provider handoffs, and missing-email
+continuation. Completing Google/X consent with a real provider account still needs
+a manual end-to-end check.
+
+### Production setup
+
+Use a Clerk production instance and configure its domain, allowed origins/redirects,
+email delivery and Google/X credentials. Set that instance's live keys in the hosting
+provider's environment, retaining the custom auth URLs from `.env.example`. Rebuild
+after changing the publishable key. Development credentials and shared OAuth
+credentials must not be used for the production launch.
