@@ -12,6 +12,64 @@ interface NavbarProps {
   onLoginClick?: () => void;
 }
 
+/**
+ * Every sponsor link goes out with the same attribution so sponsors can see
+ * exactly where the traffic came from. Future sponsors should use this helper.
+ */
+const SPONSOR_UTM = {
+  source: "eizoki.com",
+  medium: "sponsorship",
+  campaign: "eizoki_sponsorship",
+} as const;
+
+function withSponsorUtm(href: string) {
+  const url = new URL(href);
+  url.searchParams.set("utm_source", SPONSOR_UTM.source);
+  url.searchParams.set("utm_medium", SPONSOR_UTM.medium);
+  url.searchParams.set("utm_campaign", SPONSOR_UTM.campaign);
+  return url.toString();
+}
+
+function HoverHint({ label, children }: { label: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div
+      className="relative flex items-center"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+    >
+      {children}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            key="hover-hint"
+            role="tooltip"
+            initial={{ opacity: 0, y: -4, scale: 0.95, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, scale: 1, x: "-50%" }}
+            exit={{ opacity: 0, y: -3, scale: 0.96, x: "-50%" }}
+            transition={{
+              type: "spring",
+              stiffness: 520,
+              damping: 32,
+              mass: 0.6,
+            }}
+            className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 whitespace-nowrap rounded-[6px] border border-zinc-200/90 bg-[linear-gradient(180deg,#ffffff_0%,#f8f8f9_100%)] px-2 py-[3px] text-[10.5px] font-medium leading-normal tracking-tight text-zinc-800 shadow-[inset_0_2px_3px_rgba(9,9,11,0.10),inset_0_1px_0_rgba(9,9,11,0.04),inset_0_-1px_1px_rgba(255,255,255,0.9),0_1px_2px_rgba(9,9,11,0.06),0_4px_14px_rgba(9,9,11,0.10)]"
+          >
+            {label}
+            <span
+              aria-hidden="true"
+              className="absolute -top-[3px] left-1/2 h-1.5 w-1.5 -translate-x-1/2 rotate-45 rounded-[1px] border-l border-t border-zinc-200/90 bg-[#fcfcfc]"
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export function Navbar({ onSearchClick, onSubmitClick, onLoginClick }: NavbarProps) {
   const [hoveredBrandItem, setHoveredBrandItem] = useState<"logo" | "text" | null>(null);
   const [boxRect, setBoxRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
@@ -339,15 +397,35 @@ export function Navbar({ onSearchClick, onSubmitClick, onLoginClick }: NavbarPro
 
         {/* Right Section: Plus, Tactile Submit button & Settings */}
         <div className="flex items-center gap-2 sm:gap-2.5">
-          {/* Reserved project slot: dashed rounded-square placeholder for sponsored / featured project icons */}
-          <button
-            type="button"
-            aria-label="Reserved project slot"
-            title="Reserved for sponsored or featured projects"
-            className="relative w-7 h-7 rounded-[7px] flex items-center justify-center text-zinc-400 bg-zinc-50/40 border border-dashed border-zinc-300 hover:text-[#3074FE] hover:bg-[#3074FE]/5 hover:border-[#3074FE]/70 focus-visible:outline-none focus-visible:border-[#3074FE] focus-visible:text-[#3074FE] active:scale-[0.94] transition-[background-color,border-color,color,transform] duration-150 cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" strokeWidth={1.9} />
-          </button>
+          {/* Sponsored slot: DaemonDoc (opens in a new tab) */}
+          <HoverHint label="DaemonDoc">
+            <a
+              href={withSponsorUtm("https://daemondoc.online")}
+              target="_blank"
+              rel="sponsored noopener noreferrer"
+              aria-label="DaemonDoc — opens in a new tab"
+              className="relative w-7 h-7 rounded-[7px] flex items-center justify-center overflow-hidden bg-white border border-zinc-200/90 shadow-[0_1px_2px_rgba(9,9,11,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 focus-visible:ring-offset-2 active:scale-[0.94] transition-transform duration-150 cursor-pointer"
+            >
+              <Image
+                src="/DaemonDoc.webp"
+                alt="DaemonDoc"
+                width={28}
+                height={28}
+                className="w-full h-full object-contain"
+              />
+            </a>
+          </HoverHint>
+
+          {/* Reserved slot for future sponsors / featured projects */}
+          <HoverHint label="Become a Sponsor">
+            <button
+              type="button"
+              aria-label="Become a Sponsor"
+              className="relative w-7 h-7 rounded-[7px] flex items-center justify-center text-zinc-400 bg-zinc-50/40 border border-dashed border-zinc-300 hover:text-[#3074FE] hover:bg-[#3074FE]/5 hover:border-[#3074FE]/70 focus-visible:outline-none focus-visible:border-[#3074FE] focus-visible:text-[#3074FE] active:scale-[0.94] transition-[background-color,border-color,color,transform] duration-150 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" strokeWidth={1.9} />
+            </button>
+          </HoverHint>
 
           {/* Tactile "Submit" button with #3074FE and 3D top highlight */}
           <button
