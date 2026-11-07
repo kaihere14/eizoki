@@ -1,4 +1,4 @@
-# Claude Instructions — Eizoki (映像器)
+# Claude Instructions — Eizoki
 
 > **Core Instruction:** All agent behavior, architecture rules, editorial curation principles, TypeScript schemas, design tokens, and implementation phases are defined in [`agent.md`](file:///Applications/Coding/Serious/eizoki/agent/agent.md) located in this folder. Always use `agent.md` as the primary source of truth.
 

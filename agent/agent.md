@@ -6,7 +6,7 @@ This document serves as the persistent system prompt, architectural reference, a
 
 ## 1. Project Mission & Identity
 
-- **Project Name:** Eizoki (映像器)
+- **Project Name:** Eizoki
 - **Role:** Hand-curated visual discovery platform for AI-generated motion design, experimental video, and creative launch films.
 - **Core Stance:** **Curator, not generator.** We never build video generation tools or compete with generative models. Our entire focus is discovering, cataloging, attributing, and presenting the finest AI motion work on the web.
 - **Quality Axiom:** **50 exceptional videos > 5,000 mediocre ones.** Refuse low-fidelity filler.

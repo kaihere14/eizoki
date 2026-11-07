@@ -1,4 +1,4 @@
-# Eizoki (映像器) — Premium AI Motion & Video Inspiration Library
+# Eizoki — Premium AI Motion & Video Inspiration Library
 
 > **A hand-curated visual discovery platform showcasing exceptional AI-generated videos, motion design, and creative experiments from creators across the internet.**
 
