@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Search, Plus, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { useLoginModal } from "@/components/login-modal";
 
 interface NavbarProps {
   onSearchClick?: () => void;
@@ -71,6 +72,11 @@ function HoverHint({ label, children }: { label: string; children: React.ReactNo
 }
 
 export function Navbar({ onSearchClick, onSubmitClick, onLoginClick }: NavbarProps) {
+  const { openLoginModal } = useLoginModal();
+
+  const handleLoginClick = onLoginClick ?? openLoginModal;
+  const handleSubmitClick = onSubmitClick ?? openLoginModal;
+
   const [hoveredBrandItem, setHoveredBrandItem] = useState<"logo" | "text" | null>(null);
   const [boxRect, setBoxRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [tilt, setTilt] = useState(0);
@@ -364,7 +370,7 @@ export function Navbar({ onSearchClick, onSubmitClick, onLoginClick }: NavbarPro
             {/* Login button with #3074FE and 3D top-light highlight */}
             <button
               type="button"
-              onClick={onLoginClick}
+              onClick={handleLoginClick}
               className="relative z-10 px-3.5 py-1 rounded-full text-[12.5px] font-medium bg-[#3074FE] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_2px_4px_rgba(48,116,254,0.3)] border border-white/20 active:scale-[0.97] hover:bg-[#2568f2] transition-[background-color,transform,box-shadow] duration-150 ease-out cursor-pointer"
             >
               Login
@@ -442,7 +448,7 @@ export function Navbar({ onSearchClick, onSubmitClick, onLoginClick }: NavbarPro
           {/* Tactile "Submit" button with #3074FE and 3D top highlight */}
           <button
             type="button"
-            onClick={onSubmitClick}
+            onClick={handleSubmitClick}
             className="group relative inline-flex items-center justify-center px-3.5 py-1 text-[12.5px] font-medium text-white rounded-full bg-[#3074FE] border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_2px_4px_rgba(48,116,254,0.3)] hover:bg-[#2568f2] active:scale-[0.96] transition-[background-color,transform,box-shadow] duration-150 ease-out cursor-pointer"
           >
             <span>Submit</span>

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Funnel_Display } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/navbar";
+import { LoginModalProvider } from "@/components/login-modal";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -122,8 +123,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} ${funnelDisplay.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-white text-zinc-900 selection:bg-zinc-100 selection:text-zinc-900">
-        <Navbar />
-        {children}
+        <LoginModalProvider>
+          <Navbar />
+          {children}
+        </LoginModalProvider>
       </body>
     </html>
   );
