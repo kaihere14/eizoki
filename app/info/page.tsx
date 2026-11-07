@@ -49,7 +49,7 @@ export default function InfoPage() {
                 {section.body}
               </p>
               {index === 1 && (
-                <blockquote className="mt-5 border-l-2 border-[#3074FE] pl-4">
+                <blockquote className="mt-5 border-l-2 border-brand pl-4">
                   <p className="font-display text-[13.5px] leading-[1.6] font-medium text-zinc-800">
                     50 exceptional videos are more valuable than 5,000 mediocre
                     ones.
@@ -77,7 +77,7 @@ export default function InfoPage() {
         </div>
 
         <p className="mt-10 flex items-center justify-center gap-2 text-[11.5px] text-zinc-400">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#3074FE]" />
+          <span className="h-1.5 w-1.5 rounded-full bg-brand" />
           Eizoki is in active development.
         </p>
       </main>

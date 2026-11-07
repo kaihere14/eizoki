@@ -1,0 +1,35 @@
+/*
+ * Eizoki palette.
+ *
+ * Every accent is a CSS variable, so a theme can be swapped at runtime by
+ * setting `data-theme` on <html>. The neutral canvas is shared by all themes;
+ * only the brand scale changes.
+ */
+:root,
+[data-theme="blue"] {
+  color-scheme: light;
+
+  /* Neutral canvas */
+  --background: #ffffff;
+  --foreground: #09090b;
+  --border: #ffffff;
+
+  /* Brand scale */
+  --brand-50: #eef4ff;
+  --brand-100: #dbe8ff;
+  --brand-400: #4a86ff;
+  --brand-500: #3074fe;
+  --brand-600: #2568f2;
+  --brand-shadow: rgba(48, 116, 254, 0.3);
+  --brand-shadow-strong: rgba(48, 116, 254, 0.45);
+}
+
+[data-theme="pink"] {
+  --brand-50: #fdf2f7;
+  --brand-100: #fbe4ee;
+  --brand-400: #e85d94;
+  --brand-500: #d6336c;
+  --brand-600: #bf2560;
+  --brand-shadow: rgba(214, 51, 108, 0.3);
+  --brand-shadow-strong: rgba(214, 51, 108, 0.45);
+}

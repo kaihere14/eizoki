@@ -18,7 +18,7 @@ export default function FavouritesPage() {
       <main className="mx-auto w-full max-w-xl px-4 sm:px-6 pb-24">
         <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/50 px-6 py-12 text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[11px] font-medium text-zinc-600 shadow-[0_1px_2px_rgba(9,9,11,0.05)]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#3074FE]" />
+            <span className="h-1.5 w-1.5 rounded-full bg-brand" />
             In progress
           </span>
           <h2 className="mt-4 font-display text-[15px] font-semibold tracking-[-0.01em] text-zinc-900">

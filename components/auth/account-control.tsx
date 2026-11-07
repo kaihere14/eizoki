@@ -4,14 +4,15 @@ import Image from "next/image";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useEffect, useRef, useState } from "react";
 import { useEizokiUser } from "@/components/user-provider";
+import { THEMES, useTheme } from "@/components/theme-provider";
 import { AVATAR_IMAGES } from "@/lib/user";
 import { authErrorMessage } from "./use-auth-flow";
 
 const loginClass =
-  "relative z-10 px-3.5 py-1 rounded-full text-[12.5px] font-medium bg-[#3074FE] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_2px_4px_rgba(48,116,254,0.3)] border border-white/20 active:scale-[0.97] hover:bg-[#2568f2] transition-[background-color,transform,box-shadow] duration-150 ease-out cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3074FE] disabled:opacity-60";
+  "relative z-10 px-3.5 py-1 rounded-full text-[12.5px] font-medium bg-brand text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_2px_4px_var(--brand-shadow)] border border-white/20 active:scale-[0.97] hover:bg-brand-600 transition-[background-color,transform,box-shadow] duration-150 ease-out cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-60";
 
 const avatarClass =
-  "relative z-10 h-7 w-7 shrink-0 rounded-[7px] overflow-hidden bg-white border border-zinc-200/90 shadow-[0_1px_2px_rgba(9,9,11,0.08)] active:scale-[0.94] hover:shadow-[0_1px_3px_rgba(9,9,11,0.12)] transition-[transform,box-shadow] duration-150 ease-out cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3074FE]";
+  "relative z-10 h-7 w-7 shrink-0 rounded-[7px] overflow-hidden bg-white border border-zinc-200/90 shadow-[0_1px_2px_rgba(9,9,11,0.08)] active:scale-[0.94] hover:shadow-[0_1px_3px_rgba(9,9,11,0.12)] transition-[transform,box-shadow] duration-150 ease-out cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
 
 // Labels stay human-facing; the stored value is the Postgres `Avatar` enum.
 const AVATARS = {
@@ -47,6 +48,7 @@ function AvatarImage({
 export function AccountControl({ onLogin }: { onLogin: () => void }) {
   const { user, isLoaded, isSignedIn } = useUser();
   const { user: account, error: accountError, updateAvatar } = useEizokiUser();
+  const { theme, setTheme } = useTheme();
   const clerk = useClerk();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -167,7 +169,7 @@ export function AccountControl({ onLogin }: { onLogin: () => void }) {
                   aria-pressed={activeChoice === choice}
                   aria-disabled={savingAvatar !== null || busy || !account}
                   onClick={() => void selectAvatar(choice)}
-                  className={`flex flex-col items-center gap-2 rounded-xl border p-2 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3074FE] ${activeChoice === choice ? "border-[#3074FE] bg-blue-50/50 text-[#2568f2]" : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"}`}
+                  className={`flex flex-col items-center gap-2 rounded-xl border p-2 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${activeChoice === choice ? "border-brand bg-brand-50 text-brand-600" : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"}`}
                 >
                   <span className="h-16 w-16 overflow-hidden rounded-[10px]">
                     <AvatarImage src={AVATARS[choice].src} alt="" size={64} />
@@ -187,10 +189,34 @@ export function AccountControl({ onLogin }: { onLogin: () => void }) {
               {savingAvatar ? "Saving avatar…" : avatarNotice}
             </p>
           </fieldset>
+          <fieldset className="mt-4 border-t border-zinc-100 pt-4">
+            <legend className="sr-only">Color theme</legend>
+            <p className="text-xs font-medium text-zinc-600">Color theme</p>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              {THEMES.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  data-theme={option.value}
+                  aria-label={`${option.label} theme`}
+                  aria-pressed={theme === option.value}
+                  onClick={() => setTheme(option.value)}
+                  className={`flex items-center justify-center gap-2 rounded-xl border p-2 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${theme === option.value ? "border-brand bg-brand-50 text-brand-600" : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"}`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="h-3.5 w-3.5 rounded-full border border-black/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]"
+                    style={{ backgroundColor: "var(--brand-500)" }}
+                  />
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
           <button
             type="button"
             disabled={busy || savingAvatar !== null}
-            className="mt-4 h-9 w-full rounded-lg bg-zinc-100 text-sm text-zinc-900 hover:bg-zinc-200 focus-visible:outline-2 focus-visible:outline-[#3074FE] disabled:opacity-60"
+            className="mt-4 h-9 w-full rounded-lg bg-zinc-100 text-sm text-zinc-900 hover:bg-zinc-200 focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-60"
             onClick={async () => {
               setBusy(true);
               setError(null);

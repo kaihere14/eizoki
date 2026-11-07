@@ -185,7 +185,7 @@ export function VideoPreview({ video, onClose }: VideoPreviewProps) {
                   <button
                     type="button"
                     onClick={copyPrompt}
-                    className="flex w-full items-center justify-between rounded-full border border-white/20 bg-[#3074FE] px-4 py-2.5 text-[13px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_2px_4px_rgba(48,116,254,0.28)] transition-[background-color,transform] duration-150 hover:bg-[#2568f2] active:scale-[0.99]"
+                    className="flex w-full items-center justify-between rounded-full border border-white/20 bg-brand px-4 py-2.5 text-[13px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_2px_4px_var(--brand-shadow)] transition-[background-color,transform] duration-150 hover:bg-brand-600 active:scale-[0.99]"
                   >
                     {copied ? "Prompt copied" : "Copy prompt"}
                     {copied ? (
@@ -210,7 +210,7 @@ export function VideoPreview({ video, onClose }: VideoPreviewProps) {
                   href={video.sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex w-full items-center justify-between rounded-full border border-white/20 bg-[#3074FE] px-4 py-2.5 text-[13px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_2px_4px_rgba(48,116,254,0.28)] transition-colors duration-150 hover:bg-[#2568f2]"
+                  className="flex w-full items-center justify-between rounded-full border border-white/20 bg-brand px-4 py-2.5 text-[13px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_2px_4px_var(--brand-shadow)] transition-colors duration-150 hover:bg-brand-600"
                 >
                   View original
                   <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.9} />
@@ -281,8 +281,8 @@ export function VideoPreview({ video, onClose }: VideoPreviewProps) {
             </section>
 
             {video.curatorNotes && (
-              <section className="mt-4 rounded-2xl border border-[#3074FE]/15 bg-[#3074FE]/[0.05] p-3.5">
-                <h3 className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#3074FE]/80">
+              <section className="mt-4 rounded-2xl border border-brand/15 bg-brand/[0.05] p-3.5">
+                <h3 className="text-[9px] font-semibold uppercase tracking-[0.16em] text-brand/80">
                   Curator&apos;s note
                 </h3>
                 <p className="mt-1.5 text-[12.5px] leading-relaxed text-zinc-600">

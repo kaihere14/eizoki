@@ -45,12 +45,12 @@ export function PageIntro({
                     delay: 0.15,
                   }
             }
-            className="pointer-events-none absolute inset-0 border border-[#3074FE]"
+            className="pointer-events-none absolute inset-0 border border-brand"
           >
-            <span className="absolute -top-[3px] -left-[3px] h-[5px] w-[5px] border border-[#3074FE] bg-white" />
-            <span className="absolute -top-[3px] -right-[3px] h-[5px] w-[5px] border border-[#3074FE] bg-white" />
-            <span className="absolute -bottom-[3px] -left-[3px] h-[5px] w-[5px] border border-[#3074FE] bg-white" />
-            <span className="absolute -bottom-[3px] -right-[3px] h-[5px] w-[5px] border border-[#3074FE] bg-white" />
+            <span className="absolute -top-[3px] -left-[3px] h-[5px] w-[5px] border border-brand bg-white" />
+            <span className="absolute -top-[3px] -right-[3px] h-[5px] w-[5px] border border-brand bg-white" />
+            <span className="absolute -bottom-[3px] -left-[3px] h-[5px] w-[5px] border border-brand bg-white" />
+            <span className="absolute -bottom-[3px] -right-[3px] h-[5px] w-[5px] border border-brand bg-white" />
           </motion.span>
         </span>
       </h1>

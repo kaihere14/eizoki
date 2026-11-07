@@ -161,9 +161,15 @@ run `prisma generate`. Apply schema changes with:
 
 ```sh
 bun run db:migrate   # prisma migrate dev (creates + applies a migration)
+bun run db:deploy    # prisma migrate deploy (applies committed migrations)
 bun run db:push      # prototype-only, skips migration history
 bun run db:studio    # browse data
 ```
+
+The initial migration lives in `prisma/migrations`, so a hosted database only
+needs `bun run db:deploy` once. `prisma generate` does not need `DATABASE_URL`, so
+`bun run build` works on CI before the database is connected; `DATABASE_URL` is
+still required at runtime and by every `db:*` command.
 
 `User` mirrors a Clerk account: `id` is Eizoki's own `cuid()` primary key, `clerkId`
 is the unique Clerk `user_...` id, and `email` is unique. Basic profile fields
@@ -183,3 +189,15 @@ API routes:
   profile and returns the database record.
 - `PATCH /api/users/me` — requires a Clerk session; accepts `{ "avatar": "GIRL" | "BOY" }`
   and returns the updated record.
+
+## Themes
+
+The palette lives in `app/theme.css` as CSS variables, and `app/globals.css` maps
+them to Tailwind tokens (`bg-brand`, `text-brand`, `border-brand`, `bg-brand-50`,
+`hover:bg-brand-600`, `var(--brand-shadow)`, …). The default blue theme is declared
+on `:root`; `[data-theme="pink"]` swaps the brand scale for pink shades. The neutral
+canvas is shared, so only accents change.
+
+Signed-in users switch themes from the avatar menu, just below Choose avatar. The
+choice is saved in `localStorage` (`eizoki:theme`) and applied by a boot script in the
+root layout before first paint, so pages stay static and there is no colour flash.

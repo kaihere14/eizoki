@@ -193,7 +193,7 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={onClose}
             aria-label="Close login"
-            className="-mt-1.5 -mr-2 flex h-7 w-7 items-center justify-center rounded-full text-zinc-400 transition-[color,background-color,transform] duration-150 hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3074FE]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.94]"
+            className="-mt-1.5 -mr-2 flex h-7 w-7 items-center justify-center rounded-full text-zinc-400 transition-[color,background-color,transform] duration-150 hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.94]"
           >
             <X className="h-[18px] w-[18px]" strokeWidth={1.7} />
           </button>

@@ -6,13 +6,13 @@ import { GoogleIcon, XIcon } from "./provider-icons";
 import CodeSlots from "./CodeSlots";
 
 const inputClass =
-  "mt-2 h-11 w-full rounded-[10px] border border-zinc-300 bg-white px-3.5 text-[14px] text-zinc-900 outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-zinc-400 hover:border-zinc-400 focus:border-[#3074FE] focus:ring-4 focus:ring-[#3074FE]/15 disabled:opacity-60";
+  "mt-2 h-11 w-full rounded-[10px] border border-zinc-300 bg-white px-3.5 text-[14px] text-zinc-900 outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-zinc-400 hover:border-zinc-400 focus:border-brand focus:ring-4 focus:ring-brand/15 disabled:opacity-60";
 const primaryClass =
-  "mt-3.5 flex h-11 w-full items-center justify-center rounded-full border border-white/20 bg-[#3074FE] text-[14px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_2px_4px_rgba(48,116,254,0.3)] transition-[background-color,transform,box-shadow] duration-150 ease-out hover:bg-[#2568f2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3074FE]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.97] cursor-pointer disabled:cursor-wait disabled:opacity-60";
+  "mt-3.5 flex h-11 w-full items-center justify-center rounded-full border border-white/20 bg-brand text-[14px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_2px_4px_var(--brand-shadow)] transition-[background-color,transform,box-shadow] duration-150 ease-out hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.97] cursor-pointer disabled:cursor-wait disabled:opacity-60";
 const socialClass =
-  "flex h-11 w-full items-center justify-center gap-2 rounded-full bg-zinc-100 text-[14px] font-medium text-zinc-900 transition-[background-color,transform] duration-150 hover:bg-zinc-200/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3074FE]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.99] disabled:cursor-wait disabled:opacity-60";
+  "flex h-11 w-full items-center justify-center gap-2 rounded-full bg-zinc-100 text-[14px] font-medium text-zinc-900 transition-[background-color,transform] duration-150 hover:bg-zinc-200/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.99] disabled:cursor-wait disabled:opacity-60";
 const quietClass =
-  "rounded text-[12px] text-zinc-600 underline underline-offset-4 hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-[#3074FE] disabled:opacity-50";
+  "rounded text-[12px] text-zinc-600 underline underline-offset-4 hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-50";
 
 export function AuthForm({
   titleId,
@@ -263,8 +263,8 @@ export function AuthForm({
                     autoFocus
                     ariaLabel="Verification code"
                     ariaDescribedBy={flow.error ? statusId : undefined}
-                    accentColor="#3074FE"
-                    inkColor="#2563eb"
+                    accentColor="var(--brand-500)"
+                    inkColor="var(--brand-600)"
                     slotColor="#f4f4f5"
                     digitColor="#ffffff"
                     dangerColor="#dc2626"

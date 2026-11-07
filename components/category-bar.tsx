@@ -79,7 +79,7 @@ export function CategoryBar() {
               width: { type: "spring", stiffness: 430, damping: 32, mass: 0.7 },
               height: { type: "spring", stiffness: 430, damping: 32, mass: 0.7 },
             }}
-            className="absolute top-0 left-0 z-0 rounded-full border border-white/25 bg-[linear-gradient(180deg,#4a86ff_0%,#3074FE_55%,#2867e6_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.45),inset_0_-1px_1px_rgba(0,0,0,0.18),0_1px_2px_rgba(48,116,254,0.35),0_4px_10px_-3px_rgba(48,116,254,0.45)]"
+            className="absolute top-0 left-0 z-0 rounded-full border border-white/25 bg-[linear-gradient(180deg,var(--brand-400)_0%,var(--brand-500)_55%,var(--brand-600)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.45),inset_0_-1px_1px_rgba(0,0,0,0.18),0_1px_2px_var(--brand-shadow),0_4px_10px_-3px_var(--brand-shadow-strong)]"
           />
         )}
 

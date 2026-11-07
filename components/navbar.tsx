@@ -281,16 +281,16 @@ export function Navbar({ onSearchClick, onSubmitClick, onLoginClick }: NavbarPro
                       duration: 0.15,
                     },
                   }}
-                  className="absolute top-0 left-0 border border-[#3074FE] pointer-events-none origin-center z-10"
+                  className="absolute top-0 left-0 border border-brand pointer-events-none origin-center z-10"
                 >
                   {/* 4 Corner Square Handles */}
-                  <span className="absolute -top-[3px] -left-[3px] w-[5px] h-[5px] bg-white border border-[#3074FE]" />
-                  <span className="absolute -top-[3px] -right-[3px] w-[5px] h-[5px] bg-white border border-[#3074FE]" />
-                  <span className="absolute -bottom-[3px] -left-[3px] w-[5px] h-[5px] bg-white border border-[#3074FE]" />
-                  <span className="absolute -bottom-[3px] -right-[3px] w-[5px] h-[5px] bg-white border border-[#3074FE]" />
+                  <span className="absolute -top-[3px] -left-[3px] w-[5px] h-[5px] bg-white border border-brand" />
+                  <span className="absolute -top-[3px] -right-[3px] w-[5px] h-[5px] bg-white border border-brand" />
+                  <span className="absolute -bottom-[3px] -left-[3px] w-[5px] h-[5px] bg-white border border-brand" />
+                  <span className="absolute -bottom-[3px] -right-[3px] w-[5px] h-[5px] bg-white border border-brand" />
 
                   {/* Dimension Pill Badge */}
-                  <span className="absolute -bottom-4.5 left-1/2 -translate-x-1/2 bg-[#3074FE] text-white text-[9px] font-mono leading-none px-1.5 py-0.5 rounded-[3px] shadow-xs whitespace-nowrap">
+                  <span className="absolute -bottom-4.5 left-1/2 -translate-x-1/2 bg-brand text-white text-[9px] font-mono leading-none px-1.5 py-0.5 rounded-[3px] shadow-xs whitespace-nowrap">
                     {hoveredBrandItem === "logo" ? "24 × 24" : "48 × 16"}
                   </span>
                 </motion.div>
@@ -435,17 +435,17 @@ export function Navbar({ onSearchClick, onSubmitClick, onLoginClick }: NavbarPro
             <button
               type="button"
               aria-label="Become a Sponsor"
-              className="relative w-7 h-7 rounded-[7px] flex items-center justify-center text-zinc-400 bg-zinc-50/40 border border-dashed border-zinc-300 hover:text-[#3074FE] hover:bg-[#3074FE]/5 hover:border-[#3074FE]/70 focus-visible:outline-none focus-visible:border-[#3074FE] focus-visible:text-[#3074FE] active:scale-[0.94] transition-[background-color,border-color,color,transform] duration-150 cursor-pointer"
+              className="relative w-7 h-7 rounded-[7px] flex items-center justify-center text-zinc-400 bg-zinc-50/40 border border-dashed border-zinc-300 hover:text-brand hover:bg-brand/5 hover:border-brand/70 focus-visible:outline-none focus-visible:border-brand focus-visible:text-brand active:scale-[0.94] transition-[background-color,border-color,color,transform] duration-150 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" strokeWidth={1.9} />
             </button>
           </HoverHint>
 
-          {/* Tactile "Submit" button with #3074FE and 3D top highlight */}
+          {/* Tactile "Submit" button in the theme brand colour with 3D top highlight */}
           <button
             type="button"
             onClick={handleSubmitClick}
-            className="group relative inline-flex items-center justify-center px-3.5 py-1 text-[12.5px] font-medium text-white rounded-full bg-[#3074FE] border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_2px_4px_rgba(48,116,254,0.3)] hover:bg-[#2568f2] active:scale-[0.96] transition-[background-color,transform,box-shadow] duration-150 ease-out cursor-pointer"
+            className="group relative inline-flex items-center justify-center px-3.5 py-1 text-[12.5px] font-medium text-white rounded-full bg-brand border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_2px_4px_var(--brand-shadow)] hover:bg-brand-600 active:scale-[0.96] transition-[background-color,transform,box-shadow] duration-150 ease-out cursor-pointer"
           >
             <span>Submit</span>
           </button>

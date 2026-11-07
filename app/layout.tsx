@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
+import Script from "next/script";
 import { Geist, Geist_Mono, Funnel_Display } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/navbar";
 import { LoginModalProvider } from "@/components/login-modal";
+import { ThemeProvider } from "@/components/theme-provider";
 import { UserProvider } from "@/components/user-provider";
 
 const geistSans = Geist({
@@ -122,17 +124,24 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${funnelDisplay.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-white text-zinc-900 selection:bg-zinc-100 selection:text-zinc-900">
-        <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-in">
-          <UserProvider>
-            <LoginModalProvider>
-              <Navbar />
-              {children}
-            </LoginModalProvider>
-          </UserProvider>
-        </ClerkProvider>
+      <body className="min-h-full flex flex-col bg-white text-zinc-900">
+        {/* Applies the saved theme before first paint so there is no flash. */}
+        <Script id="theme-boot" strategy="beforeInteractive">
+          {`try{if(localStorage.getItem("eizoki:theme")==="pink"){document.documentElement.dataset.theme="pink"}}catch(e){}`}
+        </Script>
+        <ThemeProvider>
+          <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-in">
+            <UserProvider>
+              <LoginModalProvider>
+                <Navbar />
+                {children}
+              </LoginModalProvider>
+            </UserProvider>
+          </ClerkProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

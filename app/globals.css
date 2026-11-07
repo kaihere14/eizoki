@@ -1,15 +1,16 @@
+@import "./theme.css";
 @import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #09090b;
-  --border: #ffffff;
-}
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-border: var(--border);
+  --color-brand: var(--brand-500);
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-display: var(--font-funnel-display);
@@ -20,6 +21,12 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow-x: clip;
+}
+
+/* Selecting any text highlights it in the active theme's brand colour. */
+::selection {
+  background-color: var(--brand-500);
+  color: #ffffff;
 }
 
 /* Loading shimmer used by the feed skeletons */
