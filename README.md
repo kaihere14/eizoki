@@ -145,3 +145,41 @@ email delivery and Google/X credentials. Set that instance's live keys in the ho
 provider's environment, retaining the custom auth URLs from `.env.example`. Rebuild
 after changing the publishable key. Development credentials and shared OAuth
 credentials must not be used for the production launch.
+
+## Database
+
+Prisma ORM 7 connects to Postgres through the `pg` driver adapter. Add the connection
+string to `.env.local` (see `.env.example`):
+
+```env
+DATABASE_URL="postgresql://user:password@host:5432/eizoki?schema=public"
+```
+
+The schema lives in `prisma/schema.prisma`; the generated client is written to
+`lib/generated/prisma` and is not committed. `bun install` and `bun run build` both
+run `prisma generate`. Apply schema changes with:
+
+```sh
+bun run db:migrate   # prisma migrate dev (creates + applies a migration)
+bun run db:push      # prototype-only, skips migration history
+bun run db:studio    # browse data
+```
+
+`User` mirrors a Clerk account: `id` is Eizoki's own `cuid()` primary key, `clerkId`
+is the unique Clerk `user_...` id, and `email` is unique. Basic profile fields
+(`firstName`, `lastName`, `username`) and timestamps are kept in sync. Instead of an
+image URL, `avatar` stores which bundled default illustration the user picked
+(`GIRL` or `BOY`, defaulting to `BOY`).
+
+The browser loads that row once per session through `components/user-provider.tsx`,
+which calls `GET /api/users/me` whenever Clerk reports a signed-in session. A `401`
+from that route means the Clerk cookies are missing or stale, so the UI falls back to
+signed-out state instead of retrying.
+
+API routes:
+
+- `GET /api/health` — returns `200` when Postgres answers, `503` otherwise.
+- `GET /api/users/me` — requires a Clerk session; upserts the user from their Clerk
+  profile and returns the database record.
+- `PATCH /api/users/me` — requires a Clerk session; accepts `{ "avatar": "GIRL" | "BOY" }`
+  and returns the updated record.

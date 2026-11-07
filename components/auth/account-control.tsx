@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useEffect, useRef, useState } from "react";
+import { useEizokiUser } from "@/components/user-provider";
+import { AVATAR_IMAGES } from "@/lib/user";
 import { authErrorMessage } from "./use-auth-flow";
 
 const loginClass =
@@ -11,9 +13,10 @@ const loginClass =
 const avatarClass =
   "relative z-10 h-7 w-7 shrink-0 rounded-[7px] overflow-hidden bg-white border border-zinc-200/90 shadow-[0_1px_2px_rgba(9,9,11,0.08)] active:scale-[0.94] hover:shadow-[0_1px_3px_rgba(9,9,11,0.12)] transition-[transform,box-shadow] duration-150 ease-out cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3074FE]";
 
+// Labels stay human-facing; the stored value is the Postgres `Avatar` enum.
 const AVATARS = {
-  male: { label: "Male", src: "/avatars/male-transparent.png" },
-  female: { label: "Female", src: "/avatars/female-transparent.png" },
+  male: { label: "Male", value: "BOY", src: AVATAR_IMAGES.BOY },
+  female: { label: "Female", value: "GIRL", src: AVATAR_IMAGES.GIRL },
 } as const;
 type AvatarChoice = keyof typeof AVATARS;
 const DEFAULT_AVATAR = AVATARS.male.src;
@@ -43,6 +46,7 @@ function AvatarImage({
 
 export function AccountControl({ onLogin }: { onLogin: () => void }) {
   const { user, isLoaded, isSignedIn } = useUser();
+  const { user: account, error: accountError, updateAvatar } = useEizokiUser();
   const clerk = useClerk();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -83,15 +87,18 @@ export function AccountControl({ onLogin }: { onLogin: () => void }) {
         Login
       </button>
     );
-  const preference = user.unsafeMetadata.eizokiAvatar;
-  const selectedAvatar =
-    preference === "male" || preference === "female" ? preference : null;
-  const avatarSrc = selectedAvatar
-    ? AVATARS[selectedAvatar].src
-    : user.hasImage && user.imageUrl
-      ? user.imageUrl
-      : DEFAULT_AVATAR;
-  const activeChoice = selectedAvatar ?? (user.hasImage ? null : "male");
+
+  // The database row is authoritative; until it loads we show the default.
+  const activeChoice: AvatarChoice =
+    account?.avatar === "GIRL" ? "female" : "male";
+  const avatarSrc = AVATARS[activeChoice].src;
+  const displayName =
+    [account?.firstName, account?.lastName].filter(Boolean).join(" ") ||
+    user.fullName ||
+    "Your account";
+  const displayEmail =
+    account?.email ?? user.primaryEmailAddress?.emailAddress;
+  const notice = error ?? accountError;
 
   const selectAvatar = async (choice: AvatarChoice) => {
     if (busy || savingRef.current || activeChoice === choice) return;
@@ -100,8 +107,7 @@ export function AccountControl({ onLogin }: { onLogin: () => void }) {
     setError(null);
     setAvatarNotice(null);
     try {
-      // Cosmetic, client-writable metadata; merge without replacing other preferences.
-      await user.updateMetadata({ unsafeMetadata: { eizokiAvatar: choice } });
+      await updateAvatar(AVATARS[choice].value);
       setAvatarNotice("Avatar updated");
     } catch (error) {
       setError(authErrorMessage(error));
@@ -110,6 +116,7 @@ export function AccountControl({ onLogin }: { onLogin: () => void }) {
       setSavingAvatar(null);
     }
   };
+
   return (
     <div ref={containerRef} className="relative z-20">
       <button
@@ -138,10 +145,10 @@ export function AccountControl({ onLogin }: { onLogin: () => void }) {
             </span>
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-zinc-900">
-                {user.fullName || "Your account"}
+                {displayName}
               </p>
               <p className="mt-0.5 truncate text-xs text-zinc-500">
-                {user.primaryEmailAddress?.emailAddress}
+                {displayEmail}
               </p>
             </div>
           </div>
@@ -158,7 +165,7 @@ export function AccountControl({ onLogin }: { onLogin: () => void }) {
                   type="button"
                   aria-label={`${AVATARS[choice].label} avatar`}
                   aria-pressed={activeChoice === choice}
-                  aria-disabled={savingAvatar !== null || busy}
+                  aria-disabled={savingAvatar !== null || busy || !account}
                   onClick={() => void selectAvatar(choice)}
                   className={`flex flex-col items-center gap-2 rounded-xl border p-2 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3074FE] ${activeChoice === choice ? "border-[#3074FE] bg-blue-50/50 text-[#2568f2]" : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"}`}
                 >
@@ -197,9 +204,9 @@ export function AccountControl({ onLogin }: { onLogin: () => void }) {
           >
             {busy ? "Signing out…" : "Sign out"}
           </button>
-          {error && (
+          {notice && (
             <p role="alert" className="mt-2 text-xs text-red-600">
-              {error}
+              {notice}
             </p>
           )}
         </div>

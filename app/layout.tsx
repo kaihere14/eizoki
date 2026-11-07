@@ -4,6 +4,7 @@ import { Geist, Geist_Mono, Funnel_Display } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/navbar";
 import { LoginModalProvider } from "@/components/login-modal";
+import { UserProvider } from "@/components/user-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -125,10 +126,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col bg-white text-zinc-900 selection:bg-zinc-100 selection:text-zinc-900">
         <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-in">
-          <LoginModalProvider>
-            <Navbar />
-            {children}
-          </LoginModalProvider>
+          <UserProvider>
+            <LoginModalProvider>
+              <Navbar />
+              {children}
+            </LoginModalProvider>
+          </UserProvider>
         </ClerkProvider>
       </body>
     </html>

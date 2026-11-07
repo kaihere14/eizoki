@@ -1,0 +1,36 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Which default illustration represents the user. The app ships both
+/// avatars, so only the choice is stored — never an image URL.
+enum Avatar {
+  GIRL
+  BOY
+
+  @@map("avatar")
+}
+
+/// Mirrors a Clerk user. `clerkId` is the Clerk `user_...` id and is the
+/// stable identity we upsert against; `id` is our own internal primary key.
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  firstName String?
+  lastName  String?
+  username  String?
+  avatar    Avatar   @default(BOY)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}

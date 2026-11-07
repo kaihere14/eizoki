@@ -2,7 +2,7 @@
 
 Created with the built-in ChatGPT image generation tool from the two user-supplied portrait references. The active files are `male-transparent.png` and `female-transparent.png`, with genuine alpha transparency around the ink and in the face/neck negative space. Earlier opaque generations remain as source artwork. Next.js serves optimized versions at the displayed size.
 
-The male portrait is the fallback for users without a profile photo or an explicit avatar preference. The account menu lets users select either illustration. Selection is stored in Clerk user metadata as `eizokiAvatar`; it is a cosmetic preference, not an identity or authorization field.
+The male portrait is the fallback for users without an explicit avatar preference. The account menu lets users select either illustration. The choice is stored in Postgres as `users.avatar` (`BOY` or `GIRL`, defaulting to `BOY`) through `PATCH /api/users/me`; it is a cosmetic preference, not an identity or authorization field.
 
 ## Prompts
 
