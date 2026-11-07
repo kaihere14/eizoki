@@ -77,6 +77,14 @@ export function Navbar({ onSearchClick, onSubmitClick, onLoginClick }: NavbarPro
 
   const [hoveredNavItem, setHoveredNavItem] = useState<"favourites" | "info" | null>(null);
   const [navPillRect, setNavPillRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setIsScrolled(window.scrollY > 56);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const brandContainerRef = useRef<HTMLAnchorElement>(null);
   const logoRef = useRef<HTMLDivElement>(null);
@@ -153,8 +161,12 @@ export function Navbar({ onSearchClick, onSubmitClick, onLoginClick }: NavbarPro
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-zinc-200/80 select-none">
-      <div className="w-full flex items-center justify-between h-13 px-4 sm:px-6">
+    <header
+      className={`sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-zinc-200/80 select-none transition-transform duration-300 ease-out ${
+        isScrolled ? "-translate-y-full" : "translate-y-0"
+      }`}
+    >
+      <div className="mx-auto w-full max-w-7xl flex items-center justify-between h-13 px-4 sm:px-6 lg:px-8">
         {/* Left Section: Logo & Brand + Separator */}
         <div className="flex items-center h-full gap-1.5">
           <Link
