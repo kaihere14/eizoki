@@ -55,7 +55,7 @@ export function CategoryBar() {
   }, [active, measure]);
 
   return (
-    <div className="sticky top-2 z-40 -mx-4 mb-3 overflow-x-auto bg-white/20 px-4 pt-1 pb-3 backdrop-blur-md sm:top-3 sm:-mx-3 sm:mb-4 sm:px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="sticky top-2 z-40 -mx-4 mb-3 overflow-x-auto px-4 pt-1 pb-3 sm:top-3 sm:-mx-3 sm:mb-4 sm:px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <div
         ref={trackRef}
         role="group"
