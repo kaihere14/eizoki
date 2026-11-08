@@ -1,6 +1,8 @@
 import { currentUser } from "@clerk/nextjs/server";
 import type { Avatar } from "@/lib/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
+import { RESTRICTION_COPY } from "@/lib/account-limits";
+import { hasVideoAwaitingReview } from "@/lib/services/upload-limits";
 
 const AVATARS: Avatar[] = ["GIRL", "BOY"];
 
@@ -55,7 +57,18 @@ async function upsertUser(
       update: changes,
     });
 
-    return Response.json({ user });
+    // The client signs a suspended account out as soon as it sees this.
+    if (user.banned) {
+      return Response.json(
+        { error: RESTRICTION_COPY.ACCOUNT_BANNED.message, code: "ACCOUNT_BANNED" },
+        { status: 403 },
+      );
+    }
+
+    // Lets the Submit button explain a limit before the upload even starts.
+    const hasPendingVideo =
+      !user.isAdmin && (await hasVideoAwaitingReview(user.id));
+    return Response.json({ user: { ...user, hasPendingVideo } });
   } catch (error) {
     if (
       typeof error === "object" &&

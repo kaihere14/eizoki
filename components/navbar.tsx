@@ -10,6 +10,8 @@ import { AccountControl } from "@/components/auth/account-control";
 import { useUser } from "@clerk/nextjs";
 import { SubmissionDialog } from "@/components/submission/submission-dialog";
 import { useEizokiUser } from "@/components/user-provider";
+import { RestrictionNotice } from "@/components/restriction-notice";
+import type { RestrictionCode } from "@/lib/account-limits";
 
 interface NavbarProps {
   /** Server-rendered sponsor icons; see components/navbar-sponsors.tsx. */
@@ -73,16 +75,21 @@ export function Navbar({
 }: NavbarProps) {
   const { openLoginModal } = useLoginModal();
   // Visibility only: /admin and every admin action re-check Postgres.
-  const isAdmin = useEizokiUser().user?.isAdmin === true;
+  const { user: account } = useEizokiUser();
+  const isAdmin = account?.isAdmin === true;
 
   const handleLoginClick = onLoginClick ?? openLoginModal;
   const { isSignedIn, user: clerkUser } = useUser();
   const [submissionOpen, setSubmissionOpen] = useState(false);
+  const [restriction, setRestriction] = useState<RestrictionCode | null>(null);
   const handleSubmitClick =
     onSubmitClick ??
     (() => {
-      if (isSignedIn) setSubmissionOpen(true);
-      else openLoginModal();
+      if (!isSignedIn) return openLoginModal();
+      // Explain the limit up front; the server enforces it either way.
+      if (account?.uploadBanned) return setRestriction("UPLOAD_BANNED");
+      if (account?.hasPendingVideo) return setRestriction("REVIEW_PENDING");
+      setSubmissionOpen(true);
     });
 
   const [hoveredBrandItem, setHoveredBrandItem] = useState<
@@ -463,7 +470,19 @@ export function Navbar({
         </div>
       </header>
       {submissionOpen && (
-        <SubmissionDialog onClose={() => setSubmissionOpen(false)} />
+        <SubmissionDialog
+          onClose={() => setSubmissionOpen(false)}
+          onRestricted={(code) => {
+            setSubmissionOpen(false);
+            setRestriction(code);
+          }}
+        />
+      )}
+      {restriction && (
+        <RestrictionNotice
+          code={restriction}
+          onClose={() => setRestriction(null)}
+        />
       )}
     </>
   );

@@ -10,7 +10,7 @@ export async function isAdminRequest() {
   if (!userId) return false;
   const user = await prisma.user.findUnique({
     where: { clerkId: userId },
-    select: { isAdmin: true },
+    select: { isAdmin: true, banned: true },
   });
-  return user?.isAdmin === true;
+  return user?.isAdmin === true && !user.banned;
 }

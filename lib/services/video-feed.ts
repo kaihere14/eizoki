@@ -102,7 +102,22 @@ type VideoFeedRow = Prisma.VideoGetPayload<{
   select: typeof VIDEO_FEED_SELECT;
 }>;
 
+/**
+ * The playable URL of a video that must still have its file. Only rejected
+ * videos lose theirs, and a database check constraint guarantees that, so
+ * approved and pending rows always pass.
+ */
+export function storedVideoUrl(row: { id: string; videoUrl: string | null }) {
+  if (!row.videoUrl) throw new Error(`Video ${row.id} has no stored file.`);
+  return playableVideoUrl(row.videoUrl);
+}
+
 export function toVideoMetadata(row: VideoFeedRow): VideoMetadata {
+  return { ...videoDetails(row), videoUrl: storedVideoUrl(row) };
+}
+
+/** Everything about a video except its file, which a rejected video no longer has. */
+export function videoDetails(row: VideoFeedRow): Omit<VideoMetadata, "videoUrl"> {
   const profileUrl = row.creatorProfileUrl ?? row.creatorXUrl ?? undefined;
 
   return {
@@ -113,7 +128,6 @@ export function toVideoMetadata(row: VideoFeedRow): VideoMetadata {
     category: row.category as VideoCategory,
     tags: row.tags,
     isFeatured: row.isFeatured,
-    videoUrl: playableVideoUrl(row.videoUrl),
     durationSeconds: row.durationSeconds ?? undefined,
     creator: {
       name: row.creatorName,

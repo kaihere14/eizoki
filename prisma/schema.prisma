@@ -31,6 +31,12 @@ model User {
   avatar    Avatar   @default(BOY)
   /// Managed by trusted server/database operations, never self-service profile updates.
   isAdmin   Boolean  @default(false)
+  /// Set by hand to stop new uploads (videos and sponsor videos). Browsing,
+  /// favourites and the rest of the account keep working.
+  uploadBanned Boolean @default(false)
+  /// Set by hand to suspend the account: every protected API refuses it and
+  /// the app signs the user out as soon as it loads their record.
+  banned       Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -84,9 +90,11 @@ model Video {
   sourceUrl         String?
 
   /// Store the original asset. Derive preview transformations at delivery time.
-  videoUrl        String
-  /// Exactly one of these names the stored file: older uploads live on
-  /// ImageKit, new ones in R2 (enforced by a database check constraint).
+  /// Null only for a REJECTED video: its file is deleted on rejection.
+  videoUrl        String?
+  /// While the file exists, exactly one of these names it: older uploads live
+  /// on ImageKit, new ones in R2. A rejected video has neither (both rules are
+  /// enforced by a database check constraint).
   imagekitFileId  String? @unique
   storageKey      String? @unique
   durationSeconds Float?

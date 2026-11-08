@@ -10,7 +10,7 @@ import { readJsonBody } from "@/lib/services/video-validation";
 export async function POST(request: Request) {
   try {
     const user = await requireUser("Sign in to upload a video.");
-    const upload = await startVideoUpload(await readJsonBody(request), user.id);
+    const upload = await startVideoUpload(await readJsonBody(request), user);
     return Response.json({ upload }, { status: 201 });
   } catch (error) {
     return apiErrorResponse(error, "Unable to start the upload. Please try again.");

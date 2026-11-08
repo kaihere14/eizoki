@@ -16,9 +16,14 @@ const receipt = {
   publishedAt: null,
   createdAt: new Date(),
 };
-const findUser = mock<
-  (args: unknown) => Promise<{ id: string; isAdmin: boolean } | null>
->(async () => ({ id: "submitter", isAdmin: false }));
+type Row = { id: string; isAdmin: boolean; banned?: boolean; uploadBanned?: boolean };
+const findUser = mock<(args: unknown) => Promise<Row | null>>(async () => ({
+  id: "submitter",
+  isAdmin: false,
+}));
+const findPending = mock<(args: unknown) => Promise<{ id: string } | null>>(
+  async () => null,
+);
 const saveVideo = mock<(args: unknown) => Promise<typeof receipt>>(
   async () => receipt,
 );
@@ -75,7 +80,7 @@ mock.module("@/lib/services/r2", () => ({
 mock.module("@/lib/prisma", () => ({
   prisma: {
     user: { findUnique: findUser, upsert: upsertUser },
-    video: { create: saveVideo, findUnique: findVideo },
+    video: { create: saveVideo, findUnique: findVideo, findFirst: findPending },
   },
 }));
 mock.module("@clerk/nextjs/server", () => ({
@@ -127,6 +132,7 @@ function submission(
 
 const allMocks = [
   findUser,
+  findPending,
   saveVideo,
   findVideo,
   upsertUser,
@@ -146,6 +152,7 @@ beforeEach(() => {
   for (const fn of allMocks) fn.mockClear();
   findUser.mockResolvedValue({ id: "submitter", isAdmin: false });
   findVideo.mockResolvedValue(null);
+  findPending.mockResolvedValue(null);
   loadAuth.mockResolvedValue({ userId: "clerk-user" });
   saveVideo.mockResolvedValue(receipt);
   completeUpload.mockResolvedValue(true);
@@ -439,5 +446,80 @@ describe("POST /api/videos", () => {
     request.headers.set("content-length", String(2_000_000));
     expect((await POST(request)).status).toBe(413);
     expect(completeUpload).not.toHaveBeenCalled();
+  });
+});
+
+describe("upload limits and bans", () => {
+  const start = () =>
+    START(
+      json("http://localhost/api/uploads", {
+        purpose: "video",
+        size: 10,
+        contentType: "video/mp4",
+      }),
+    );
+
+  test("one video at a time: a pending review blocks the next upload before R2", async () => {
+    findPending.mockResolvedValue({ id: "earlier" });
+    const response = await start();
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ code: "REVIEW_PENDING" });
+    expect(findPending.mock.calls[0][0]).toMatchObject({
+      where: { submittedById: "submitter", reviewStatus: "PENDING_REVIEW" },
+    });
+    expect(createUpload).not.toHaveBeenCalled();
+  });
+
+  test("re-checks at submit, so two uploads started side by side cannot both land", async () => {
+    findPending.mockResolvedValue({ id: "other-tab" });
+    const response = await POST(submission());
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ code: "REVIEW_PENDING" });
+    expect(completeUpload).not.toHaveBeenCalled();
+    expect(saveVideo).not.toHaveBeenCalled();
+  });
+
+  test("admins publish immediately and are never limited", async () => {
+    findUser.mockResolvedValue({ id: "submitter", isAdmin: true });
+    findPending.mockResolvedValue({ id: "earlier" });
+    expect((await start()).status).toBe(201);
+  });
+
+  test("sponsor videos are not held by a pending catalogue video", async () => {
+    findPending.mockResolvedValue({ id: "earlier" });
+    const response = await START(
+      json("http://localhost/api/uploads", {
+        purpose: "sponsor",
+        size: 10,
+        contentType: "video/mp4",
+      }),
+    );
+    expect(response.status).toBe(201);
+  });
+
+  test("an upload ban stops uploads but not the account", async () => {
+    findUser.mockResolvedValue({ id: "submitter", isAdmin: false, uploadBanned: true });
+    const response = await start();
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "UPLOAD_BANNED" });
+    expect(createUpload).not.toHaveBeenCalled();
+    expect((await POST(submission())).status).toBe(403);
+    expect(completeUpload).not.toHaveBeenCalled();
+  });
+
+  test("a full ban refuses every protected API, admins included", async () => {
+    findUser.mockResolvedValue({ id: "submitter", isAdmin: true, banned: true });
+    for (const response of [
+      await start(),
+      await POST(submission()),
+      await ABORT(
+        json("http://localhost/api/uploads/abort", { key: KEY, uploadId: "upload-id" }),
+      ),
+    ]) {
+      expect(response.status).toBe(403);
+      expect(await response.json()).toMatchObject({ code: "ACCOUNT_BANNED" });
+    }
+    expect(createUpload).not.toHaveBeenCalled();
+    expect(abortUpload).not.toHaveBeenCalled();
   });
 });

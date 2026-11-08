@@ -1,7 +1,11 @@
+import type { RestrictionCode } from "@/lib/account-limits";
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
     message: string,
+    /** Lets the client show a specific notice for account restrictions. */
+    public readonly code?: RestrictionCode,
   ) {
     super(message);
     this.name = "ApiError";
@@ -13,7 +17,12 @@ export function apiErrorResponse(
   message = "Unable to save the video. Please try again.",
 ) {
   if (error instanceof ApiError) {
-    return Response.json({ error: error.message }, { status: error.status });
+    return Response.json(
+      error.code
+        ? { error: error.message, code: error.code }
+        : { error: error.message },
+      { status: error.status },
+    );
   }
 
   // Do not expose provider responses, database details, or credentials.

@@ -13,10 +13,9 @@ import {
 } from "@/lib/sponsorships";
 import {
   cancelVideoUpload,
-  errorMessage,
+  requestError,
   uploadSurvives,
   uploadVideoToStorage,
-  UploadRequestError,
   type FinishedUpload,
 } from "@/lib/chunked-upload";
 import {
@@ -282,12 +281,9 @@ export function Sponsorship() {
         body,
       });
       if (!response.ok) {
-        const failure = new UploadRequestError(
-          await errorMessage(
-            response,
-            "The booking could not be sent. Please try again.",
-          ),
-          response.status,
+        const failure = await requestError(
+          response,
+          "The booking could not be sent. Please try again.",
         );
         if (!uploadSurvives(failure)) uploadedRef.current = null;
         throw failure;

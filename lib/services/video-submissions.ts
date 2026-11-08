@@ -4,6 +4,7 @@ import { ApiError } from "@/lib/api-error";
 import { isUniqueViolation } from "@/lib/prisma-errors";
 import { cleanupR2Object } from "./r2";
 import { requireSubmissionUser } from "./submission-user";
+import { assertCanUpload } from "./upload-limits";
 import { finishVideoUpload, type StoredVideo } from "./video-uploads";
 import {
   parseVideoSubmission,
@@ -61,6 +62,8 @@ export async function createVideoSubmission(request: Request) {
   ) {
     throw new ApiError(409, "This video was already submitted.");
   }
+  // Re-checked here: two uploads started side by side both passed the start check.
+  await assertCanUpload(user, "video");
   const asset = await finishVideoUpload(upload, "video", user.id);
 
   try {

@@ -1,6 +1,7 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, useClerk } from "@clerk/nextjs";
+import { RestrictionNotice } from "@/components/restriction-notice";
 import {
   createContext,
   useCallback,
@@ -46,6 +47,8 @@ type UserState = {
   userId: string | null;
   user: ApiUser | null;
   error: string | null;
+  /** The account is banned; the provider signs it out. */
+  suspended?: boolean;
 };
 
 function failure(userId: string, cause: unknown): UserState {
@@ -67,6 +70,12 @@ async function fetchUser(userId: string, signal: AbortSignal): Promise<UserState
   // Clerk's session is missing or no longer valid.
   if (response.status === 401) return { userId, user: null, error: null };
 
+  if (response.status === 403) {
+    const body = await response.clone().json().catch(() => null);
+    if (body?.code === "ACCOUNT_BANNED")
+      return { userId, user: null, error: null, suspended: true };
+  }
+
   if (!response.ok) throw new Error(await errorMessage(response));
 
   const body = (await response.json()) as { user: ApiUser };
@@ -80,12 +89,27 @@ async function fetchUser(userId: string, signal: AbortSignal): Promise<UserState
  */
 export function UserProvider({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn, userId } = useAuth();
+  const { signOut } = useClerk();
+  const [showSuspended, setShowSuspended] = useState(false);
   const [state, setState] = useState<UserState>({
     userId: null,
     user: null,
     error: null,
   });
   const abortRef = useRef<AbortController | null>(null);
+
+  // A suspended account cannot use the app: sign it out and say why. The user
+  // record loads right after every sign-in, so a banned user cannot get past it.
+  const apply = useCallback(
+    (next: UserState) => {
+      setState(next);
+      if (next.suspended) {
+        setShowSuspended(true);
+        void signOut();
+      }
+    },
+    [signOut],
+  );
 
   const refresh = useCallback(async () => {
     if (!userId) return;
@@ -96,11 +120,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     try {
       const next = await fetchUser(userId, controller.signal);
-      if (!controller.signal.aborted) setState(next);
+      if (!controller.signal.aborted) apply(next);
     } catch (cause) {
       if (!controller.signal.aborted) setState(failure(userId, cause));
     }
-  }, [userId]);
+  }, [userId, apply]);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !userId) {
@@ -114,14 +138,27 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     fetchUser(userId, controller.signal)
       .then((next) => {
-        if (!controller.signal.aborted) setState(next);
+        if (!controller.signal.aborted) apply(next);
       })
       .catch((cause: unknown) => {
         if (!controller.signal.aborted) setState(failure(userId, cause));
       });
 
     return () => controller.abort();
-  }, [isLoaded, isSignedIn, userId]);
+  }, [isLoaded, isSignedIn, userId, apply]);
+
+  // Upload limits change when the user submits or deletes a video, and when an
+  // admin reviews one, so re-read them on those events and on returning to the tab.
+  useEffect(() => {
+    if (!isSignedIn) return;
+    const reload = () => void refresh();
+    window.addEventListener("eizoki:videos-changed", reload);
+    window.addEventListener("focus", reload);
+    return () => {
+      window.removeEventListener("eizoki:videos-changed", reload);
+      window.removeEventListener("focus", reload);
+    };
+  }, [isSignedIn, refresh]);
 
   const updateAvatar = useCallback(
     async (avatar: UserAvatar) => {
@@ -161,6 +198,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
+      {showSuspended && (
+        <RestrictionNotice
+          code="ACCOUNT_BANNED"
+          onClose={() => setShowSuspended(false)}
+        />
+      )}
     </UserContext.Provider>
   );
 }

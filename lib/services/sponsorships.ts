@@ -27,6 +27,7 @@ import {
   peakConcurrency,
   validateSponsorIcon,
 } from "./sponsorship-validation";
+import { assertCanUpload } from "./upload-limits";
 import { finishVideoUpload, type StoredVideo } from "./video-uploads";
 import { readSubmissionForm } from "./video-validation";
 
@@ -208,6 +209,7 @@ export async function createSponsorshipBooking(request: Request) {
   if (booking.placement === "NAVBAR" && form.has("videoUpload")) {
     throw new ApiError(400, "Navbar sponsorships do not include a video.");
   }
+  if (videoUpload || icon) await assertCanUpload(user, "sponsor");
 
   const startsAt = new Date();
   const schedule = { startsAt, endsAt: sponsorshipEndsAt(startsAt) };

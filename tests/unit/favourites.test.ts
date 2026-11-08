@@ -12,7 +12,12 @@ const loadAuth = mock(async (): Promise<{ userId: string | null }> => ({
   userId: "clerk-owner",
 }));
 const findUser = mock<
-  () => Promise<{ id: string; isAdmin: boolean } | null>
+  () => Promise<{
+    id: string;
+    isAdmin: boolean;
+    banned?: boolean;
+    uploadBanned?: boolean;
+  } | null>
 >(async () => ({ id: "owner", isAdmin: false }));
 const findVideo = mock<(args: unknown) => Promise<{ id: string } | null>>(
   async () => ({ id: "video-1" }),
@@ -252,6 +257,26 @@ describe("saving and removing favourites", () => {
       create: { userId: "owner", videoId: "video-1" },
       update: {},
     });
+  });
+
+  test("an upload ban leaves favourites working", async () => {
+    findUser.mockResolvedValueOnce({ id: "owner", isAdmin: false, uploadBanned: true });
+    const response = await PUT(
+      new Request("http://localhost/api/videos/video-1/favourite", { method: "PUT" }),
+      context,
+    );
+    expect(response.status).toBe(200);
+  });
+
+  test("a suspended account cannot save favourites", async () => {
+    findUser.mockResolvedValueOnce({ id: "owner", isAdmin: false, banned: true });
+    const response = await PUT(
+      new Request("http://localhost/api/videos/video-1/favourite", { method: "PUT" }),
+      context,
+    );
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "ACCOUNT_BANNED" });
+    expect(upsert).not.toHaveBeenCalled();
   });
 
   test("never saves a missing or non-public video", async () => {

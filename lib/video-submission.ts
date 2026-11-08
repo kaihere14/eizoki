@@ -1,8 +1,7 @@
 import type { VideoSubmissionMetadata } from "@/lib/services/video-validation";
 import { isVideoTag } from "@/lib/video-tags";
 import {
-  errorMessage,
-  UploadRequestError,
+  requestError,
   type FinishedUpload,
 } from "@/lib/chunked-upload";
 
@@ -81,12 +80,9 @@ export async function sendVideoSubmission(
     body: JSON.stringify({ metadata, upload }),
   });
   if (!response.ok) {
-    throw new UploadRequestError(
-      await errorMessage(
-        response,
-        "Your video could not be submitted. Please try again.",
-      ),
-      response.status,
+    throw await requestError(
+      response,
+      "Your video could not be submitted. Please try again.",
     );
   }
   const result = await response.json().catch(() => null);

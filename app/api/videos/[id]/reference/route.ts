@@ -10,7 +10,7 @@ export async function GET(
   const { id } = await context.params;
   try {
     const video = await findPublicVideoReference(id);
-    if (!video)
+    if (!video?.videoUrl)
       return Response.json(
         { error: "Video not found." },
         { status: 404, headers: HEADERS },

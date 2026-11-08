@@ -2,15 +2,14 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import {
-  ArrowLeft,
   ArrowUpRight,
-  Check,
   ChevronDown,
   LoaderCircle,
   X,
 } from "lucide-react";
 import { useEizokiUser } from "@/components/user-provider";
 import { CATEGORY_LABELS } from "@/lib/videos";
+import type { RestrictionCode } from "@/lib/account-limits";
 import { useVideoSubmission } from "./use-video-submission";
 import { VideoUpload } from "./video-upload";
 import { TagPicker } from "./tag-picker";
@@ -19,14 +18,35 @@ const inputClass =
   "mt-2 w-full rounded-[10px] border border-zinc-200 bg-white px-3 py-2.5 text-[13px] text-zinc-900 shadow-[0_1px_2px_rgba(9,9,11,0.02)] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-zinc-400 hover:border-zinc-300 focus:border-brand focus:ring-[3px] focus:ring-brand/10 disabled:opacity-60";
 const labelClass = "block text-[12px] font-medium text-zinc-700";
 
-export function SubmissionDialog({ onClose }: { onClose: () => void }) {
-  const { user } = useEizokiUser();
+/** The tick draws in ~540 ms; the rest of the hold lets the line be read. */
+const DONE_HOLD_MS = 1700;
+/** Matches the overlay's fade-out transition in globals.css. */
+const LEAVE_MS = 320;
+
+export function SubmissionDialog({
+  onClose,
+  onRestricted,
+}: {
+  onClose: () => void;
+  /** The server refused for an account reason; the parent shows the notice. */
+  onRestricted: (code: RestrictionCode) => void;
+}) {
+  const { user, refresh } = useEizokiUser();
   const isAdmin = user?.isAdmin === true;
-  const submission = useVideoSubmission(isAdmin);
+  const submission = useVideoSubmission(isAdmin, (code) => {
+    // The cached limits were stale; re-read them so the Submit button knows.
+    void refresh();
+    onRestricted(code);
+  });
   const [hasPrompt, setHasPrompt] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const descriptionId = useId();
+  const [leaving, setLeaving] = useState(false);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -55,6 +75,22 @@ export function SubmissionDialog({ onClose }: { onClose: () => void }) {
   }, []);
 
   const published = submission.receipt?.reviewStatus === "APPROVED";
+  const done = submission.receipt !== null;
+
+  // After a successful submit: tick, short hold, then the overlay fades and
+  // un-blurs to reveal the page, and the dialog closes itself.
+  useEffect(() => {
+    if (!done) return;
+    const leave = setTimeout(() => setLeaving(true), DONE_HOLD_MS);
+    const close = setTimeout(
+      () => onCloseRef.current(),
+      DONE_HOLD_MS + LEAVE_MS,
+    );
+    return () => {
+      clearTimeout(leave);
+      clearTimeout(close);
+    };
+  }, [done]);
 
   return (
     <dialog
@@ -62,6 +98,7 @@ export function SubmissionDialog({ onClose }: { onClose: () => void }) {
       tabIndex={-1}
       aria-labelledby={titleId}
       aria-describedby={descriptionId}
+      data-state={leaving ? "leaving" : done ? "done" : undefined}
       onCancel={(event) => {
         event.preventDefault();
         if (!submission.isSubmitting) onClose();
@@ -75,25 +112,20 @@ export function SubmissionDialog({ onClose }: { onClose: () => void }) {
             onClose();
         }}
       >
+        {!submission.receipt && (
         <header className="mb-7 flex shrink-0 items-start justify-between gap-4 sm:mb-9">
           <div>
             <h2
               id={titleId}
               className="font-display text-[25px] font-semibold leading-tight tracking-tight sm:text-[28px]"
             >
-              {submission.receipt
-                ? published
-                  ? "Your video is published"
-                  : "Thanks for sharing"
-                : "Submit a video"}
+              Submit a video
             </h2>
             <p
               id={descriptionId}
               className="mt-2 text-[13px] leading-relaxed text-zinc-500"
             >
-              {submission.receipt
-                ? "One more piece of motion worth watching."
-                : "Share the video. Credit the creator. Pass on the prompt."}
+              Share the video. Credit the creator. Pass on the prompt.
             </p>
           </div>
           <button
@@ -106,30 +138,52 @@ export function SubmissionDialog({ onClose }: { onClose: () => void }) {
             <X className="h-4 w-4" strokeWidth={1.7} />
           </button>
         </header>
+        )}
 
         {submission.receipt ? (
           <div
             role="status"
-            className="mx-auto my-auto flex w-full max-w-[420px] flex-col items-center py-16 text-center"
+            className="submission-success m-auto flex w-full max-w-[380px] flex-col items-center text-center"
           >
-            <span className="mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-brand-50 text-brand">
-              <Check className="h-6 w-6" strokeWidth={1.8} />
-            </span>
-            <h3 className="font-display text-[24px] font-semibold tracking-tight">
-              {submission.receipt.title}
-            </h3>
-            <p className="mt-3 text-[13px] leading-relaxed text-zinc-500">
-              {published
-                ? "Published and ready for the collection."
-                : "Your video is in the review queue. Once approved, it will appear in the collection with the creator’s credit."}
-            </p>
-            <button
-              type="button"
-              onClick={onClose}
-              className="mt-7 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-5 py-2.5 text-[13px] font-medium text-zinc-700 shadow-sm outline-none hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-brand"
+            <svg
+              viewBox="0 0 56 56"
+              aria-hidden="true"
+              className="mb-5 h-14 w-14 text-brand"
             >
-              <ArrowLeft className="h-3.5 w-3.5" /> Back to browsing
-            </button>
+              <circle
+                className="submission-tick-ring"
+                cx="28"
+                cy="28"
+                r="27"
+                fill="var(--brand-50)"
+                stroke="currentColor"
+                strokeOpacity="0.18"
+              />
+              <path
+                className="submission-tick-mark"
+                d="M18.5 28.5l6.5 6.5 12.5-14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                pathLength={1}
+              />
+            </svg>
+            <h2
+              id={titleId}
+              className="submission-success-text font-display text-[22px] font-semibold leading-tight tracking-tight"
+            >
+              {published ? "Your video is published" : "Thanks for sharing"}
+            </h2>
+            <p
+              id={descriptionId}
+              className="submission-success-text mt-2 text-[13px] leading-relaxed text-zinc-600"
+            >
+              {published
+                ? `“${submission.receipt.title}” is live in the collection.`
+                : `“${submission.receipt.title}” is in review and appears once approved.`}
+            </p>
           </div>
         ) : (
           <form

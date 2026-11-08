@@ -1,3 +1,5 @@
+import { isRestrictionCode, type RestrictionCode } from "@/lib/account-limits";
+
 /**
  * Browser side of the direct-to-R2 multipart upload.
  *
@@ -9,14 +11,23 @@
 
 export type UploadPurpose = "video" | "sponsor";
 
-/** An HTTP failure, keeping the status so callers can decide to re-upload. */
+/**
+ * An HTTP failure, keeping the status so callers can decide to re-upload, and
+ * the restriction code (if any) so they can show the matching notice.
+ */
 export class UploadRequestError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly code?: RestrictionCode,
   ) {
     super(message);
   }
+}
+
+/** The restriction behind a failed request, if it was one. */
+export function restrictionOf(error: unknown) {
+  return error instanceof UploadRequestError ? error.code : undefined;
 }
 
 /**
@@ -61,14 +72,18 @@ function abortError() {
   return new DOMException("The upload was cancelled.", "AbortError");
 }
 
-export async function errorMessage(response: Response, fallback: string) {
+/** Read an API error body (`{ error, code? }`) into an UploadRequestError. */
+export async function requestError(response: Response, fallback: string) {
   const result: unknown = await response.json().catch(() => null);
-  return typeof result === "object" &&
-    result !== null &&
-    "error" in result &&
-    typeof result.error === "string"
-    ? result.error
-    : fallback;
+  const body =
+    typeof result === "object" && result !== null
+      ? (result as { error?: unknown; code?: unknown })
+      : {};
+  return new UploadRequestError(
+    typeof body.error === "string" ? body.error : fallback,
+    response.status,
+    isRestrictionCode(body.code) ? body.code : undefined,
+  );
 }
 
 function putPart(
@@ -183,8 +198,9 @@ export async function uploadVideoToStorage(
     signal,
   });
   if (!response.ok) {
-    throw new Error(
-      await errorMessage(response, "The upload could not start. Please try again."),
+    throw await requestError(
+      response,
+      "The upload could not start. Please try again.",
     );
   }
   const { upload } = (await response.json()) as { upload: StartedUpload };

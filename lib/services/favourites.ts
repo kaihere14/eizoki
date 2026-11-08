@@ -61,9 +61,9 @@ export async function isVideoFavourited(videoId: string) {
 
   const user = await prisma.user.findUnique({
     where: { clerkId: userId },
-    select: { id: true },
+    select: { id: true, banned: true },
   });
-  if (!user) return false;
+  if (!user || user.banned) return false;
 
   const favourite = await prisma.favourite.findUnique({
     where: { userId_videoId: { userId: user.id, videoId } },

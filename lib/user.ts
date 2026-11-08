@@ -8,6 +8,10 @@ export type ApiUser = {
   username: string | null;
   avatar: UserAvatar;
   isAdmin: boolean;
+  /** Set by an admin: no new uploads, everything else still works. */
+  uploadBanned: boolean;
+  /** A community submission is still waiting for review (one at a time). */
+  hasPendingVideo: boolean;
   createdAt: string;
   updatedAt: string;
 };

@@ -28,7 +28,8 @@ function uploads() {
       tags: [],
       creator: { name: "External creator" },
       promptStatus: "unavailable",
-      videoUrl: "/owned-fixture.webm",
+      // A rejected video's file is deleted, so the API sends no URL for it.
+      videoUrl: reviewStatus === "REJECTED" ? null : "/owned-fixture.webm",
       aspectRatio: 4 / 3,
       reviewStatus,
       publishedAt:
@@ -92,6 +93,11 @@ test("navbar replaces Info with My Videos and displays all owned review states",
   await expect(page).toHaveURL(/\/my-videos$/);
   for (const status of ["Pending review", "Published", "Rejected"])
     await expect(page.getByText(status, { exact: true })).toBeVisible();
+  // Rejected: only the outcome, no player and nothing to preview.
+  await expect(page.getByText("Not approved · video removed")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /^Preview My upload 2/ }),
+  ).toHaveCount(0);
   await page
     .getByRole("button", {
       name: "Preview My upload 0 by External creator",

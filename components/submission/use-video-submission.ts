@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   cancelVideoUpload,
+  restrictionOf,
   uploadSurvives,
   uploadVideoToStorage,
   type FinishedUpload,
@@ -12,6 +13,7 @@ import {
   MAX_VIDEO_BYTES,
   MAX_VIDEO_LABEL,
 } from "@/lib/video-upload-limits";
+import type { RestrictionCode } from "@/lib/account-limits";
 import {
   sendVideoSubmission,
   submissionMetadata,
@@ -20,7 +22,10 @@ import {
 
 export type SubmissionPhase = "idle" | "uploading" | "saving";
 
-export function useVideoSubmission(isAdmin: boolean) {
+export function useVideoSubmission(
+  isAdmin: boolean,
+  onRestricted?: (code: RestrictionCode) => void,
+) {
   const [selection, setSelection] = useState<{
     file: File;
     url: string;
@@ -116,6 +121,13 @@ export function useVideoSubmission(isAdmin: boolean) {
       }
     } catch (cause) {
       if (cause instanceof DOMException && cause.name === "AbortError") return;
+      const restriction = restrictionOf(cause);
+      if (restriction && onRestricted) {
+        // Nothing to retry: the parts are discarded and the notice explains why.
+        discardUpload();
+        onRestricted(restriction);
+        return;
+      }
       setError(
         cause instanceof Error
           ? cause.message

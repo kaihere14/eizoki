@@ -19,6 +19,7 @@ import {
   readObjectHeader,
   signUploadPart,
 } from "./r2";
+import { assertCanUpload } from "./upload-limits";
 
 /** Where a finished upload is allowed to be used. */
 export const UPLOAD_PURPOSES = ["video", "sponsor"] as const;
@@ -117,7 +118,11 @@ export function matchesVideoSignature(
 }
 
 /** Create the multipart upload and sign one PUT URL per part. */
-export async function startVideoUpload(input: unknown, userId: string) {
+export async function startVideoUpload(
+  input: unknown,
+  user: { id: string; isAdmin: boolean; uploadBanned: boolean },
+) {
+  const userId = user.id;
   const result = startUploadSchema.safeParse(input);
   if (!result.success) {
     throw new ApiError(400, "Describe the video with its purpose, size and type.");
@@ -127,6 +132,8 @@ export async function startVideoUpload(input: unknown, userId: string) {
   if (!isVideoContentType(contentType)) {
     throw new ApiError(415, "Upload an MP4, MOV, or WebM video.");
   }
+  // Checked before anything is created in R2.
+  await assertCanUpload(user, purpose);
 
   const key = `${KEY_PREFIX[purpose]}/${userId}/${randomUUID()}.${VIDEO_CONTENT_TYPES[contentType]}`;
   const uploadId = await createMultipartUpload(key, contentType);

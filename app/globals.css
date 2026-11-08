@@ -101,3 +101,114 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .submission-dialog[open] .submission-dialog-content { animation: none; }
 }
+
+/* Submission success: tick draws over a lighter blurred veil, then the veil
+   fades and un-blurs to reveal the page. Timings match DONE_HOLD_MS / LEAVE_MS
+   in submission-dialog.tsx. */
+.submission-dialog {
+  transition:
+    background-color 240ms cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 320ms cubic-bezier(0.23, 1, 0.32, 1),
+    backdrop-filter 320ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.submission-dialog[data-state="done"] {
+  background-color: rgb(255 255 255 / 0.55);
+  backdrop-filter: blur(6px);
+}
+.submission-dialog[data-state="leaving"] {
+  background-color: rgb(255 255 255 / 0);
+  backdrop-filter: blur(0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.submission-success {
+  animation: submission-success-in 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+@keyframes submission-success-in {
+  from { opacity: 0; filter: blur(4px); }
+  to { opacity: 1; filter: blur(0); }
+}
+
+.submission-tick-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: submission-tick-ring 260ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+@keyframes submission-tick-ring {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.submission-tick-mark {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: submission-tick-draw 380ms cubic-bezier(0.65, 0, 0.35, 1) 160ms forwards;
+}
+@keyframes submission-tick-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+.submission-success-text {
+  animation: submission-enter 260ms cubic-bezier(0.23, 1, 0.32, 1) 300ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .submission-dialog { transition: opacity 200ms ease-out; }
+  .submission-success,
+  .submission-tick-ring,
+  .submission-success-text { animation: none; }
+  .submission-tick-mark { animation: none; stroke-dashoffset: 0; }
+}
+
+/* Restriction notice: card rises in over a soft blurred backdrop; the hourglass
+   turns once so "waiting" reads at a glance. EXIT_MS in restriction-notice.tsx
+   matches the 150 ms exit. */
+.notice-dialog[open] {
+  animation: notice-in 220ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.notice-dialog[open]::backdrop {
+  animation: notice-backdrop-in 220ms ease-out both;
+}
+.notice-dialog[data-closing] {
+  animation: notice-out 150ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+.notice-dialog[data-closing]::backdrop {
+  animation: notice-backdrop-out 150ms ease-in both;
+}
+@keyframes notice-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes notice-out {
+  to { opacity: 0; transform: translateY(4px) scale(0.98); }
+}
+@keyframes notice-backdrop-in {
+  from { opacity: 0; }
+}
+@keyframes notice-backdrop-out {
+  to { opacity: 0; }
+}
+.notice-icon {
+  animation: notice-icon-pop 320ms cubic-bezier(0.34, 1.56, 0.64, 1) 60ms both;
+}
+@keyframes notice-icon-pop {
+  from { opacity: 0; transform: scale(0.7); }
+  to { opacity: 1; transform: scale(1); }
+}
+.notice-hourglass {
+  animation: notice-hourglass 700ms cubic-bezier(0.65, 0, 0.35, 1) 340ms both;
+}
+@keyframes notice-hourglass {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(180deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notice-dialog[open],
+  .notice-dialog[open]::backdrop,
+  .notice-icon,
+  .notice-hourglass { animation: none; }
+  .notice-dialog[data-closing],
+  .notice-dialog[data-closing]::backdrop { animation: notice-backdrop-out 150ms ease-in both; }
+}

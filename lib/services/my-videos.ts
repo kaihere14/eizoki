@@ -1,10 +1,11 @@
 import { ApiError } from "@/lib/api-error";
+import { playableVideoUrl } from "@/lib/video-delivery";
 import { prisma } from "@/lib/prisma";
 import { deleteImageKitFile } from "./imagekit";
 import { deleteR2Object } from "./r2";
 import { requireSubmissionUser } from "./submission-user";
 import {
-  toVideoMetadata,
+  videoDetails,
   VIDEO_FEED_SELECT,
   videoFeedQuerySchema,
   type VideoFeedQuery,
@@ -30,7 +31,9 @@ export async function listMyVideos(
   const page = rows.slice(0, query.limit);
   return {
     videos: page.map((row) => ({
-      ...toVideoMetadata(row),
+      ...videoDetails(row),
+      // A rejected video's file is deleted; the uploader sees only the status.
+      videoUrl: row.videoUrl ? playableVideoUrl(row.videoUrl) : null,
       reviewStatus: row.reviewStatus,
       createdAt: row.createdAt.toISOString(),
     })),

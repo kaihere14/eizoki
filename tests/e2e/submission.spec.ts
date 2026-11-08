@@ -19,7 +19,10 @@ test.afterAll(async () => {
   if (clerkId) await client.users.deleteUser(clerkId);
 });
 
-async function openSubmission(page: Page, admin = false) {
+async function signInAs(
+  page: Page,
+  flags: { admin?: boolean; hasPendingVideo?: boolean; uploadBanned?: boolean } = {},
+) {
   await page.route("**/api/users/me", (route) =>
     route.fulfill({
       json: {
@@ -31,7 +34,9 @@ async function openSubmission(page: Page, admin = false) {
           lastName: "Maker",
           username: null,
           avatar: "BOY",
-          isAdmin: admin,
+          isAdmin: flags.admin ?? false,
+          uploadBanned: flags.uploadBanned ?? false,
+          hasPendingVideo: flags.hasPendingVideo ?? false,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -43,6 +48,10 @@ async function openSubmission(page: Page, admin = false) {
   await expect(
     page.getByRole("button", { name: "Account menu" }),
   ).toBeVisible();
+}
+
+async function openSubmission(page: Page, admin = false) {
+  await signInAs(page, { admin });
   await page.getByRole("button", { name: "Submit", exact: true }).click();
   await expect(
     page.getByRole("dialog", { name: "Submit a video" }),
@@ -207,8 +216,11 @@ test("submits only necessary metadata and confirms community review", async ({
     uploadId: "upload-id",
     parts: [{ partNumber: 1, etag: '"etag-1"' }],
   });
-  await page.getByRole("button", { name: "Back to browsing" }).click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  // The success tick closes the dialog by itself; no button to press.
+  await expect(page.getByRole("dialog").getByRole("status")).toContainText(
+    "is in review",
+  );
+  await expect(page.getByRole("dialog")).toHaveCount(0, { timeout: 5_000 });
 });
 
 test("fixed tag pills support adding, removing, the three-tag cap, and Escape", async ({
@@ -356,4 +368,66 @@ test("fits mobile, respects the pink theme, and closes without navigating", asyn
   ).toBeVisible();
   await page.getByRole("button", { name: "Close submission" }).click();
   expect(new URL(page.url()).pathname).toBe("/");
+});
+
+test("a video still in review blocks the next upload with a notice", async ({
+  page,
+}) => {
+  await signInAs(page, { hasPendingVideo: true });
+  await page.getByRole("button", { name: "Submit", exact: true }).click();
+  const notice = page.getByRole("dialog", { name: "One video at a time" });
+  await expect(notice).toContainText(
+    "Please wait for your previous video to be reviewed before uploading the next one.",
+  );
+  await expect(page.getByRole("dialog", { name: "Submit a video" })).toHaveCount(0);
+  await notice.getByRole("button", { name: "Got it" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("an upload ban explains itself instead of opening the form", async ({
+  page,
+}) => {
+  await signInAs(page, { uploadBanned: true });
+  await page.getByRole("button", { name: "Submit", exact: true }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Uploads are turned off" }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("a limit the server finds mid-submit closes the form and shows the notice", async ({
+  page,
+}) => {
+  await openSubmission(page);
+  await page.route("**/api/uploads", (route) =>
+    route.fulfill({
+      status: 409,
+      json: {
+        error: "Please wait for your previous video to be reviewed before uploading the next one.",
+        code: "REVIEW_PENDING",
+      },
+    }),
+  );
+  await fillSubmission(page);
+  await page.getByRole("button", { name: "Submit for review", exact: true }).click();
+  await expect(
+    page.getByRole("dialog", { name: "One video at a time" }),
+  ).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Submit a video" })).toHaveCount(0);
+});
+
+test("a suspended account is signed out and told why", async ({ page }) => {
+  await page.route("**/api/users/me", (route) =>
+    route.fulfill({
+      status: 403,
+      json: { error: "This account has been suspended.", code: "ACCOUNT_BANNED" },
+    }),
+  );
+  await page.goto("/");
+  await clerk.signIn({ page, emailAddress: email });
+  await expect(
+    page.getByRole("dialog", { name: "Account suspended" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Account menu" })).toHaveCount(0);
 });

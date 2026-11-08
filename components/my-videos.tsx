@@ -2,13 +2,13 @@
 
 import { useAuth } from "@clerk/nextjs";
 import { useEffect, useRef, useState } from "react";
-import { Film, LoaderCircle, Trash2 } from "lucide-react";
+import { Film, FileX2, LoaderCircle, Trash2 } from "lucide-react";
 import { useLoginModal } from "@/components/login-modal";
 import { SkeletonFeed } from "@/components/skeleton-feed";
 import { VideoCard } from "@/components/video-card";
 import { VideoPreview } from "@/components/video-preview";
 import { DeleteVideoDialog } from "@/components/delete-video-dialog";
-import { fetchMyVideos, type MyVideo } from "@/lib/my-videos";
+import { fetchMyVideos, hasVideoFile, type MyVideo } from "@/lib/my-videos";
 import { formatPublishedAt } from "@/lib/videos";
 
 export function MyVideos() {
@@ -47,7 +47,9 @@ function MyVideosCollection() {
   const [error, setError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
   const [moreBusy, setMoreBusy] = useState(false);
-  const [selected, setSelected] = useState<MyVideo | null>(null);
+  const [selected, setSelected] = useState<
+    (MyVideo & { videoUrl: string }) | null
+  >(null);
   const [deleting, setDeleting] = useState<MyVideo | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const moreController = useRef<AbortController | null>(null);
@@ -162,11 +164,25 @@ function MyVideosCollection() {
       <div className="columns-2 gap-3 sm:gap-4 lg:columns-3 xl:columns-4">
         {videos.map((video) => (
           <article key={video.id} className="mb-5 break-inside-avoid">
-            <VideoCard
-              video={video}
-              onOpen={() => setSelected(video)}
-              paused={selected !== null || deleting !== null}
-            />
+            {hasVideoFile(video) ? (
+              <VideoCard
+                video={video}
+                onOpen={() => setSelected(video)}
+                paused={selected !== null || deleting !== null}
+              />
+            ) : (
+              // Rejected: the file was deleted, so only the outcome remains.
+              <div className="mb-3 flex aspect-video flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-300 bg-zinc-50 text-center sm:mb-4">
+                <FileX2
+                  className="h-5 w-5 text-zinc-400"
+                  strokeWidth={1.5}
+                  aria-hidden="true"
+                />
+                <span className="px-3 text-[11.5px] leading-snug text-zinc-500">
+                  Not approved · video removed
+                </span>
+              </div>
+            )}
             <div className="-mt-1 flex items-start gap-2 px-1">
               <div className="min-w-0 flex-1">
                 <h2 className="truncate text-[12.5px] font-medium text-zinc-800">

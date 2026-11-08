@@ -1,6 +1,8 @@
 import { ApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
-import { playableVideoUrl } from "@/lib/video-delivery";
+import { cleanupUploadedVideo } from "./imagekit";
+import { cleanupR2Object } from "./r2";
+import { storedVideoUrl } from "./video-feed";
 
 /** One page of the queue. The admin works through it oldest first. */
 const REVIEW_PAGE_SIZE = 50;
@@ -42,7 +44,7 @@ export async function listVideosForReview() {
   return {
     rows: rows.map((row) => ({
       ...row,
-      videoUrl: playableVideoUrl(row.videoUrl),
+      videoUrl: storedVideoUrl(row),
     })),
     total,
   };
@@ -70,6 +72,7 @@ async function decide(
   reviewStatus: "APPROVED" | "REJECTED",
   reviewNotes: string | null,
   reviewerId: string,
+  extra: { videoUrl?: null; storageKey?: null; imagekitFileId?: null } = {},
 ) {
   const now = new Date();
   const { count } = await prisma.video.updateMany({
@@ -81,6 +84,7 @@ async function decide(
       publishedAt: reviewStatus === "APPROVED" ? now : null,
       reviewedById: reviewerId,
       reviewedAt: now,
+      ...extra,
     },
   });
   if (count === 1) return;
@@ -97,10 +101,30 @@ export async function approveVideo(id: string, reviewerId: string) {
   await decide(id, "APPROVED", null, reviewerId);
 }
 
+/**
+ * Reject and delete the file: a rejected video is never shown again, so its
+ * storage is freed straight away and the uploader only sees the outcome.
+ *
+ * The record changes first, in the same guarded update as any decision, so a
+ * concurrent approval can never end up pointing at a deleted file. The file
+ * is deleted after that; if deletion fails, the key is logged for cleanup
+ * and the rejection still stands.
+ */
 export async function rejectVideo(
   id: string,
   notes: string | undefined,
   reviewerId: string,
 ) {
-  await decide(id, "REJECTED", notes?.trim() || null, reviewerId);
+  // A pending video's file never changes, so reading it first is safe.
+  const file = await prisma.video.findUnique({
+    where: { id },
+    select: { storageKey: true, imagekitFileId: true },
+  });
+  await decide(id, "REJECTED", notes?.trim() || null, reviewerId, {
+    videoUrl: null,
+    storageKey: null,
+    imagekitFileId: null,
+  });
+  if (file?.storageKey) await cleanupR2Object(file.storageKey);
+  else if (file?.imagekitFileId) await cleanupUploadedVideo(file.imagekitFileId);
 }
