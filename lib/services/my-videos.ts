@@ -1,6 +1,7 @@
 import { ApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 import { deleteImageKitFile } from "./imagekit";
+import { deleteR2Object } from "./r2";
 import { requireSubmissionUser } from "./submission-user";
 import {
   toVideoMetadata,
@@ -47,12 +48,14 @@ export async function deleteMyVideo(id: string) {
   const where = user.isAdmin ? { id } : { id, submittedById: user.id };
   const owned = await prisma.video.findFirst({
     where,
-    select: { imagekitFileId: true },
+    select: { imagekitFileId: true, storageKey: true },
   });
   // Missing and someone else's video have the same response.
   if (!owned) throw new ApiError(404, "Video not found.");
   try {
-    await deleteImageKitFile(owned.imagekitFileId);
+    if (owned.storageKey) await deleteR2Object(owned.storageKey);
+    else if (owned.imagekitFileId)
+      await deleteImageKitFile(owned.imagekitFileId);
   } catch {
     throw new ApiError(
       502,
@@ -63,7 +66,7 @@ export async function deleteMyVideo(id: string) {
     // Repeat the ownership condition on the mutation; concurrent deletion is safe.
     await prisma.video.deleteMany({ where });
   } catch {
-    // ImageKit 404 is treated as success, so retrying completes this partial deletion.
+    // Deleting a missing file succeeds, so retrying completes this partial deletion.
     throw new ApiError(
       500,
       "The video file was removed, but its entry could not be deleted. Please retry.",

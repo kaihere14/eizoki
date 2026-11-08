@@ -1,19 +1,21 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
-import { cleanupUploadedVideo, uploadVideoToImageKit } from "./imagekit";
+import { ApiError } from "@/lib/api-error";
+import { isUniqueViolation } from "@/lib/prisma-errors";
+import { cleanupR2Object } from "./r2";
 import { requireSubmissionUser } from "./submission-user";
+import { finishVideoUpload, type StoredVideo } from "./video-uploads";
 import {
   parseVideoSubmission,
   type VideoSubmissionMetadata,
 } from "./video-validation";
-import type { UploadedVideo } from "./imagekit";
 
 type Submitter = { id: string; isAdmin: boolean };
 
 export function buildVideoSubmissionData(
   metadata: VideoSubmissionMetadata,
   user: Submitter,
-  asset: UploadedVideo,
+  asset: StoredVideo,
 ) {
   const slugTitle =
     metadata.title
@@ -29,8 +31,8 @@ export function buildVideoSubmissionData(
     slug: `${slugTitle}-${randomUUID()}`,
     submittedById: user.id,
     videoUrl: asset.url,
-    imagekitFileId: asset.fileId,
-    durationSeconds: asset.duration,
+    storageKey: asset.key,
+    durationSeconds: asset.durationSeconds,
     reviewStatus: approved
       ? ("APPROVED" as const)
       : ("PENDING_REVIEW" as const),
@@ -40,13 +42,26 @@ export function buildVideoSubmissionData(
   };
 }
 
+/**
+ * Finalise a video the browser already uploaded to R2. Metadata is checked
+ * first, so a rejected form leaves the uploaded parts in place for a retry.
+ */
 export async function createVideoSubmission(request: Request) {
   const user = await requireSubmissionUser();
-  const { file, extension, metadata } = await parseVideoSubmission(
+  const { metadata, upload } = await parseVideoSubmission(
     request,
     user.isAdmin,
   );
-  const asset = await uploadVideoToImageKit(file, extension);
+  // A retried request whose first attempt already saved the video.
+  if (
+    await prisma.video.findUnique({
+      where: { storageKey: upload.key },
+      select: { id: true },
+    })
+  ) {
+    throw new ApiError(409, "This video was already submitted.");
+  }
+  const asset = await finishVideoUpload(upload, "video", user.id);
 
   try {
     return await prisma.video.create({
@@ -62,7 +77,11 @@ export async function createVideoSubmission(request: Request) {
       },
     });
   } catch (error) {
-    await cleanupUploadedVideo(asset.fileId);
+    // A concurrent duplicate owns the object now; never delete it.
+    if (isUniqueViolation(error, "storageKey")) {
+      throw new ApiError(409, "This video was already submitted.");
+    }
+    await cleanupR2Object(asset.key);
     throw error;
   }
 }

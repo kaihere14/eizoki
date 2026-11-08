@@ -212,16 +212,18 @@ the Eizoki account that submitted it; `creatorName`, optional `creatorUsername`,
 `creatorXUrl`, and `creatorProfileUrl` credit the actual creator, who need not have
 an account. `sourceUrl` can identify the original post.
 
-Store the original ImageKit `videoUrl` and `imagekitFileId`; derive lightweight
-preview URLs at delivery time. Feed previews use the video itself; no thumbnail,
-width, or height is stored. Duration is optional when ImageKit returns it.
+Store the original `videoUrl` plus the file's storage handle: `storageKey` (the
+Cloudflare R2 object key) for new uploads, or `imagekitFileId` for videos uploaded
+before the move to R2. A database check constraint requires exactly one of them.
+Feed previews use the video itself; no thumbnail, width, or height is stored.
+Duration is optional; the browser reads it from the file's metadata.
 Keep `promptText` verbatim and append a stable video reference
 URL based on the record's immutable `id` when copying a prompt.
-`GET /api/videos/[id]/reference` redirects to the ImageKit asset only when the
+`GET /api/videos/[id]/reference` redirects to the stored asset only when the
 record is approved and published. Missing or non-public references return `404`.
 The redirect is not cached, so later approval changes are checked on each request.
 
-Only confirmed ImageKit uploads become video records, so no media readiness field
+Only confirmed, verified uploads become video records, so no media readiness field
 is needed. Review status is `PENDING_REVIEW`, `APPROVED`, or `REJECTED`. The
 submission service reads the submitter's `isAdmin` from the database: admin submissions are
 approved immediately, while others retain the database default `PENDING_REVIEW`.
@@ -242,17 +244,63 @@ creator details, review history, and admin assignments are retained.
 
 ### Submit a video
 
-Set `IMAGEKIT_PRIVATE_KEY` in the server environment (`.env.local` for development).
-Uploads use ImageKit's server-side multipart API; no public key or client-side
-secret is required. See [ImageKit authentication](https://imagekit.io/docs/api-overview).
+Videos upload straight from the browser to Cloudflare R2 with S3 multipart
+uploads. The bytes never pass through a Vercel function, so its 4.5 MB request
+body limit does not apply; the server only handles small JSON calls. The limit
+is 500 MB (`lib/video-upload-limits.ts`).
 
-`POST /api/videos` requires a Clerk session and accepts `multipart/form-data` with
-exactly two fields:
+1. `POST /api/uploads` with `{ "purpose": "video" | "sponsor", "size", "contentType" }`.
+   The server creates the multipart upload under a key that embeds the caller's
+   user ID (`videos/<userId>/<uuid>.<ext>`) and returns one presigned `PUT` URL per
+   10 MiB part, valid for one hour.
+2. The browser `PUT`s each slice of the file to its URL, four at a time, retrying
+   network and 5xx failures with backoff, and collects each part's `ETag`.
+3. `POST /api/videos` with JSON `{ "metadata": {...}, "upload": { "key",
+   "uploadId", "parts": [{ "partNumber", "etag" }], "durationSeconds"? } }`.
+   The server validates the metadata first, so a rejected form leaves the parts in
+   R2 and the browser resubmits without re-uploading. It then checks the key
+   belongs to the caller, completes the upload (R2 joins the parts), checks the
+   stored size, type, and file signature, and only then saves the record. Invalid
+   files are deleted.
 
-- `file`: a non-empty MP4, MOV (ISO media container), or WebM file, up to 100 MB.
-- `metadata`: a JSON string. The required fields are `title`, `category` (an existing
-  category slug), and `creatorName`. Other creator details can describe someone
-  other than the submitter.
+`POST /api/uploads/abort` with `{ "key", "uploadId" }` discards an unfinished
+upload; the form calls it when a file is replaced or the dialog closes mid-upload.
+
+#### R2 setup
+
+Set these server-only variables (`.env.local` for development, the Vercel project
+for production): `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
+`R2_BUCKET_NAME`, and `R2_PUBLIC_URL`. Create the access key as an R2 API token
+with Object Read & Write on the bucket only. `R2_PUBLIC_URL` is the bucket's
+public base URL: connect a custom domain (recommended; it is cached by
+Cloudflare) or enable the `r2.dev` URL for testing.
+
+The browser uploads cross-origin, so the bucket needs a CORS policy that allows
+`PUT` from the site and exposes `ETag` (without it every upload fails with
+"Storage did not confirm the upload"). In the R2 dashboard, Settings → CORS policy:
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://your-domain.com", "http://localhost:3000"],
+    "AllowedMethods": ["PUT", "GET", "HEAD"],
+    "AllowedHeaders": ["*"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+Also add an object lifecycle rule that aborts incomplete multipart uploads after
+one day, so parts from abandoned uploads do not accumulate storage.
+
+ImageKit (`IMAGEKIT_PRIVATE_KEY`) is still used for sponsor icons and to delete
+videos uploaded before the move to R2.
+
+#### Metadata
+
+The required fields are `title`, `category` (an existing category slug), and
+`creatorName`. Other creator details can describe someone other than the submitter.
 
 Example metadata:
 
@@ -278,39 +326,33 @@ sharing a prompt. Admins may also set `curatorNotes` and `isFeatured`.
 Tags are optional: choose up to three distinct values from the shared fixed
 catalog in `lib/video-tags.ts`. The form displays selected tags as removable
 pills and keeps a dashed Add tag button after them. The API rejects unknown
-tags, duplicates, and selections larger than three before uploading any media.
+tags, duplicates, and selections larger than three before completing the upload.
 
 The route only handles HTTP responses. Services separately authorize/provision
-the submitter, bound and validate the request, upload to ImageKit, and construct
-and save the Prisma record. Only the original asset URL and file ID are stored;
-preview transformations are not generated here. The asset is explicitly public
-on ImageKit, and a record is saved only after synchronous upload confirmation.
-Admin submissions are approved and published;
+the submitter, validate the request, finish and verify the R2 upload, and
+construct and save the Prisma record. Admin submissions are approved and published;
 community submissions remain `PENDING_REVIEW` with no publication date. Pending
-records stay out of the public catalog; the underlying ImageKit asset URL is
-public if known.
+records stay out of the public catalog; the underlying R2 object URL is public
+if known.
 
 A `201` response contains `{ "video": { "id", "slug", "title", "reviewStatus",
 "publishedAt", "createdAt" } }`. Errors contain `{ "error": "..." }`:
-`400` invalid metadata/body, `401` signed out, `403` admin-only fields, `413`
-oversized request, `415` unsupported content/file, `422` missing account email,
-`502` ImageKit failure, `503` missing ImageKit configuration, or `500` persistence
-failure. Failed saves attempt to delete the newly uploaded asset; failed cleanup
-logs the file ID for reconciliation. No automatic upload retries are performed.
-
-This endpoint relays the file through the Next.js server and buffers bounded
-multipart data. The host's request size and execution limits still apply; for
-larger files or increased upload traffic, move the binary transfer to authorized
-direct ImageKit uploads with a server-side finalization step.
+`400` invalid metadata/body or missing parts, `401` signed out, `403` admin-only
+fields or someone else's upload, `409` already submitted, `410` upload expired or
+cancelled, `413` oversized video, `415` unsupported or disguised file, `422`
+missing account email, `502` R2 failure, `503` missing R2 configuration, or `500`
+persistence failure. Failed saves delete the stored video; failed cleanup logs the
+key for reconciliation. A retried request whose first attempt already saved the
+video returns `409` and never deletes it.
 
 Run `bun run test:unit` for isolated controller/service tests with mocked Clerk,
-ImageKit, and Prisma. They do not upload assets or modify the real database.
+R2, and Prisma. They do not upload assets or modify the real database.
 
 ### Public feed
 
 `GET /api/videos` returns `{ "videos": [...], "nextCursor": "..." | null }`.
 The response mirrors `VideoMetadata`: creator credit, prompt provenance, tags,
-tools, duration, and the original ImageKit `videoUrl`. Visibility is enforced in
+tools, duration, and the original `videoUrl`. Visibility is enforced in
 the query, so pending and future-dated records never reach the browser.
 
 `components/video-feed.tsx` fetches the first page on mount, shows
@@ -356,16 +398,17 @@ session and database account; callers cannot select another user's uploads.
 
 `DELETE /api/videos/[id]` requires the same submitter, including for admin callers.
 The UI asks for confirmation before sending it. Missing or someone else's records
-return `404` without contacting ImageKit. The service deletes the ImageKit file
-first and removes the ownership-scoped database record only after confirmation.
-ImageKit failure returns `502` and retains the record for retry. If the file was
-removed but the database delete fails, the response explains that deletion should
-be retried; ImageKit `404` is treated as success on that retry. A completed deletion
-returns `204` and refreshes the affected list. No schema migration is required.
+return `404` without contacting storage. The service deletes the file first (from
+R2, or from ImageKit for older videos) and removes the ownership-scoped database
+record only after confirmation. A storage failure returns `502` and retains the
+record for retry. If the file was removed but the database delete fails, the
+response explains that deletion should be retried; deleting an already-missing
+file succeeds on that retry. A completed deletion returns `204` and refreshes the
+affected list.
 
 Run `bunx playwright test tests/e2e/my-videos.spec.ts` for the private-management UI
 checks. They use temporary Clerk accounts and mocked data/deletion endpoints;
-no real upload records or ImageKit assets are deleted.
+no real upload records or stored files are deleted.
 
 ### Favourites
 

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ApiError } from "@/lib/api-error";
+import { parseUploadedVideo } from "./video-uploads";
 import {
   MAX_SPONSOR_ICON_BYTES,
   SPONSOR_ICON_TYPES,
@@ -35,7 +36,7 @@ const BOOKING_FIELDS = new Set([
   "contactEmail",
   "description",
   "icon",
-  "video",
+  "videoUpload",
 ]);
 
 /** Read the text fields of a multipart booking; files are checked separately. */
@@ -60,6 +61,20 @@ export function parseSponsorshipFields(form: FormData): SponsorshipBooking {
     );
   }
   return result.data;
+}
+
+/** The featured video's finished R2 upload, sent as a JSON form field. */
+export function parseSponsorVideoUpload(entry: FormDataEntryValue | null) {
+  if (typeof entry !== "string" || entry.length > 64_000) {
+    throw new ApiError(400, "Upload the video you want featured.");
+  }
+  let input: unknown;
+  try {
+    input = JSON.parse(entry);
+  } catch {
+    throw new ApiError(400, "The video upload details are malformed.");
+  }
+  return parseUploadedVideo(input);
 }
 
 /** Trust the bytes, not the browser-reported type. */

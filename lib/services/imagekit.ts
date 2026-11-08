@@ -18,14 +18,6 @@ function authorization() {
 
 export type UploadedAsset = UploadedVideo;
 
-export function uploadVideoToImageKit(
-  file: File,
-  extension: string,
-  folder = "/eizoki/videos",
-): Promise<UploadedVideo> {
-  return uploadFileToImageKit(file, extension, folder, "video");
-}
-
 export async function uploadFileToImageKit(
   file: File,
   extension: string,

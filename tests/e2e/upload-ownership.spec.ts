@@ -3,7 +3,7 @@ import { clerk } from "@clerk/testing/playwright";
 import { createClerkClient } from "@clerk/nextjs/server";
 import { Client } from "pg";
 
-const email = `eizoki-parser-${Date.now()}+clerk_test@example.com`;
+const email = `eizoki-upload-${Date.now()}+clerk_test@example.com`;
 const client = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
 let clerkId: string;
 
@@ -27,7 +27,7 @@ test.afterAll(async () => {
   }
 });
 
-test("multipart uploads above 10 MB reach file validation intact through the real proxy", async ({
+test("a signed-in user cannot finish someone else's upload through the real stack", async ({
   page,
 }) => {
   await page.goto("/");
@@ -36,31 +36,28 @@ test("multipart uploads above 10 MB reach file validation intact through the rea
     page.getByRole("button", { name: "Account menu" }),
   ).toBeVisible();
 
-  for (const size of [1_000_000, 11_000_000]) {
-    const result = await page.evaluate(async (bytes) => {
-      const body = new FormData();
-      // Intentionally invalid video bytes: parsing must succeed, then format
-      // validation rejects the file before any ImageKit request or video write.
-      body.set(
-        "file",
-        new File([new Uint8Array(bytes)], "parser-test.mp4", {
-          type: "video/mp4",
-        }),
-      );
-      body.set(
-        "metadata",
-        JSON.stringify({
-          title: "Parser regression",
+  // Ownership is checked before R2 is contacted, so no storage is needed.
+  const result = await page.evaluate(async () => {
+    const response = await fetch("/api/videos", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        metadata: {
+          title: "Ownership check",
           category: "ai-motion-design",
           creatorName: "Test creator",
-        }),
-      );
-      const response = await fetch("/api/videos", { method: "POST", body });
-      return { status: response.status, body: await response.json() };
-    }, size);
-    expect(result, `${size} byte upload`).toEqual({
-      status: 415,
-      body: { error: "The file contents do not match the video format." },
+        },
+        upload: {
+          key: "videos/someone-else/0b7c5c1e-9a55-4a8e-8f0e-1d2c3b4a5f60.mp4",
+          uploadId: "upload-id",
+          parts: [{ partNumber: 1, etag: '"etag"' }],
+        },
+      }),
     });
-  }
+    return { status: response.status, body: await response.json() };
+  });
+  expect(result).toEqual({
+    status: 403,
+    body: { error: "That upload is not yours." },
+  });
 });

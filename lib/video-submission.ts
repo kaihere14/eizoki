@@ -1,5 +1,10 @@
 import type { VideoSubmissionMetadata } from "@/lib/services/video-validation";
 import { isVideoTag } from "@/lib/video-tags";
+import {
+  errorMessage,
+  UploadRequestError,
+  type FinishedUpload,
+} from "@/lib/chunked-upload";
 
 export type VideoSubmissionReceipt = {
   id: string;
@@ -65,22 +70,26 @@ export function submissionMetadata(
   };
 }
 
+/** Finalise a video already uploaded to R2 with its catalogue details. */
 export async function sendVideoSubmission(
-  file: File,
+  upload: FinishedUpload,
   metadata: VideoSubmissionMetadata,
 ): Promise<VideoSubmissionReceipt> {
-  const body = new FormData();
-  body.set("file", file);
-  body.set("metadata", JSON.stringify(metadata));
-  const response = await fetch("/api/videos", { method: "POST", body });
-  const result = await response.json().catch(() => null);
+  const response = await fetch("/api/videos", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ metadata, upload }),
+  });
   if (!response.ok) {
-    throw new Error(
-      typeof result?.error === "string"
-        ? result.error
-        : "Your video could not be submitted. Please try again.",
+    throw new UploadRequestError(
+      await errorMessage(
+        response,
+        "Your video could not be submitted. Please try again.",
+      ),
+      response.status,
     );
   }
+  const result = await response.json().catch(() => null);
   if (!result?.video?.id)
     throw new Error(
       "The server did not confirm your submission. Please check before trying again.",

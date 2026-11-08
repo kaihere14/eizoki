@@ -344,6 +344,21 @@ export function SubmissionDialog({ onClose }: { onClose: () => void }) {
                 </p>
               )}
               <div className="mt-6 border-t border-zinc-100 pt-5">
+                {submission.phase === "uploading" && (
+                  <div
+                    role="progressbar"
+                    aria-label="Upload progress"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.round(submission.progress * 100)}
+                    className="mb-4 h-1 overflow-hidden rounded-full bg-zinc-100"
+                  >
+                    <div
+                      className="h-full origin-left rounded-full bg-brand transition-transform duration-200 ease-out motion-reduce:transition-none"
+                      style={{ transform: `scaleX(${submission.progress})` }}
+                    />
+                  </div>
+                )}
                 <button
                   type="submit"
                   disabled={submission.isSubmitting}
@@ -352,7 +367,9 @@ export function SubmissionDialog({ onClose }: { onClose: () => void }) {
                   {submission.isSubmitting ? (
                     <>
                       <LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" />{" "}
-                      Uploading your video…
+                      {submission.phase === "uploading"
+                        ? `Uploading ${Math.round(submission.progress * 100)}%`
+                        : "Saving your video…"}
                     </>
                   ) : (
                     <>

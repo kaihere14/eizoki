@@ -11,7 +11,20 @@ import {
   SPONSOR_ICON_TYPES,
   SPONSORSHIP_LABELS,
 } from "@/lib/sponsorships";
-import { MAX_VIDEO_BYTES } from "@/lib/video-upload-limits";
+import {
+  cancelVideoUpload,
+  errorMessage,
+  uploadSurvives,
+  uploadVideoToStorage,
+  UploadRequestError,
+  type FinishedUpload,
+} from "@/lib/chunked-upload";
+import {
+  isVideoContentType,
+  MAX_VIDEO_BYTES,
+  MAX_VIDEO_LABEL,
+  VIDEO_CONTENT_TYPES,
+} from "@/lib/video-upload-limits";
 import {
   Suspense,
   useCallback,
@@ -33,11 +46,12 @@ import {
   X,
 } from "lucide-react";
 
-const VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
+const VIDEO_TYPES = Object.keys(VIDEO_CONTENT_TYPES);
 
 type SubmitState =
   | { status: "idle" }
-  | { status: "submitting" }
+  /** `progress` is the video upload's share done, or null once it is saving. */
+  | { status: "submitting"; progress: number | null }
   | { status: "done"; live: boolean; endsAt: string | null }
   | { status: "error"; message: string };
 
@@ -177,7 +191,18 @@ export function Sponsorship() {
   const nameRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
+  // A video already in R2 whose booking was rejected; a retry reuses it.
+  const uploadedRef = useRef<{ file: File; upload: FinishedUpload } | null>(
+    null,
+  );
   const plan = PLANS.find((item) => item.id === selected);
+
+  useEffect(
+    () => () => {
+      if (uploadedRef.current) cancelVideoUpload(uploadedRef.current.upload);
+    },
+    [],
+  );
 
   useEffect(() => {
     const timer = setTimeout(
@@ -232,26 +257,43 @@ export function Sponsorship() {
     body.set("contactEmail", contactEmail);
     body.set("description", draft.description);
     if (iconFile) body.set("icon", iconFile);
-    if (plan.placement === "FEED_VIDEO" && videoFile)
-      body.set("video", videoFile);
 
-    setSubmit({ status: "submitting" });
+    const needsVideo = plan.placement === "FEED_VIDEO" && videoFile;
+    setSubmit({ status: "submitting", progress: needsVideo ? 0 : null });
     try {
+      if (needsVideo) {
+        // The video goes straight to storage; the booking only names it.
+        let upload =
+          uploadedRef.current?.file === videoFile
+            ? uploadedRef.current.upload
+            : null;
+        if (!upload) {
+          upload = await uploadVideoToStorage(videoFile, "sponsor", {
+            onProgress: (progress) =>
+              setSubmit({ status: "submitting", progress }),
+          });
+          uploadedRef.current = { file: videoFile, upload };
+        }
+        body.set("videoUpload", JSON.stringify(upload));
+        setSubmit({ status: "submitting", progress: null });
+      }
       const response = await fetch("/api/sponsorships", {
         method: "POST",
         body,
       });
-      const result: unknown = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error(
-          typeof result === "object" &&
-            result !== null &&
-            "error" in result &&
-            typeof result.error === "string"
-            ? result.error
-            : "The booking could not be sent. Please try again.",
+        const failure = new UploadRequestError(
+          await errorMessage(
+            response,
+            "The booking could not be sent. Please try again.",
+          ),
+          response.status,
         );
+        if (!uploadSurvives(failure)) uploadedRef.current = null;
+        throw failure;
       }
+      uploadedRef.current = null;
+      const result: unknown = await response.json().catch(() => null);
       const sponsorship =
         typeof result === "object" && result !== null && "sponsorship" in result
           ? (result.sponsorship as { status?: string; endsAt?: string | null })
@@ -512,9 +554,11 @@ export function Sponsorship() {
                       />
                     )}
                     {submit.status === "submitting"
-                      ? isAdmin
-                        ? "Publishing…"
-                        : "Sending booking…"
+                      ? submit.progress !== null
+                        ? `Uploading video ${Math.round(submit.progress * 100)}%`
+                        : isAdmin
+                          ? "Publishing…"
+                          : "Sending booking…"
                       : !isSignedIn
                         ? "Sign in to book"
                         : isAdmin
@@ -606,7 +650,7 @@ export function Sponsorship() {
                         id="sponsor-video-help"
                         className="mt-1 block text-[11px] font-normal text-zinc-400"
                       >
-                        MP4, MOV or WebM, up to 100 MB
+                        MP4, MOV or WebM, up to {MAX_VIDEO_LABEL}
                       </span>
                       <input
                         ref={videoRef}
@@ -619,13 +663,17 @@ export function Sponsorship() {
                           event.target.value = "";
                           if (!file) return;
                           if (
-                            !VIDEO_TYPES.includes(file.type) ||
+                            !isVideoContentType(file.type) ||
                             file.size > MAX_VIDEO_BYTES
                           ) {
                             setVideoError(
-                              "Choose an MP4, MOV or WebM video up to 100 MB.",
+                              `Choose an MP4, MOV or WebM video up to ${MAX_VIDEO_LABEL}.`,
                             );
                             return;
+                          }
+                          if (uploadedRef.current) {
+                            cancelVideoUpload(uploadedRef.current.upload);
+                            uploadedRef.current = null;
                           }
                           setVideoError(null);
                           setVideoFile(file);
@@ -745,7 +793,7 @@ export function Sponsorship() {
           ],
           [
             "What should I prepare?",
-            "Your product name, website, a short description and contact email. For a featured video, upload your film (MP4, MOV or WebM, up to 100 MB). You can also supply a square brand icon.",
+            "Your product name, website, a short description and contact email. For a featured video, upload your film (MP4, MOV or WebM, up to 500 MB). You can also supply a square brand icon.",
           ],
           [
             "Are sponsored videos labelled?",

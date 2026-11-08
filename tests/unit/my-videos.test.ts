@@ -43,8 +43,15 @@ const findMany = mock<(args: unknown) => Promise<ReturnType<typeof row>[]>>(
   async () => [row()],
 );
 const findOwned = mock<
-  (args: unknown) => Promise<{ imagekitFileId: string } | null>
->(async () => ({ imagekitFileId: "owned-asset" }));
+  (
+    args: unknown,
+  ) => Promise<{ imagekitFileId: string | null; storageKey: string | null } | null>
+>(async () => ({ imagekitFileId: "owned-asset", storageKey: null }));
+const deleteR2 = mock<(key: string) => Promise<void>>(async () => {});
+mock.module("@/lib/services/r2", () => ({
+  deleteR2Object: deleteR2,
+  cleanupR2Object: mock(async () => {}),
+}));
 const deleteMany = mock<(args: unknown) => Promise<{ count: number }>>(
   async () => ({ count: 1 }),
 );
@@ -76,7 +83,8 @@ beforeEach(() => {
   loadAuth.mockResolvedValue({ userId: "clerk-owner" });
   findUser.mockResolvedValue({ id: "owner", isAdmin: false });
   findMany.mockResolvedValue([row()]);
-  findOwned.mockResolvedValue({ imagekitFileId: "owned-asset" });
+  findOwned.mockResolvedValue({ imagekitFileId: "owned-asset", storageKey: null });
+  deleteR2.mockClear();
   deleteMany.mockResolvedValue({ count: 1 });
   fetchSpy.mockReset();
   fetchSpy.mockResolvedValue(new Response(null, { status: 204 }));
@@ -186,6 +194,25 @@ describe("private video management", () => {
     expect(deleteMany.mock.calls[0][0]).toEqual({
       where: { id: "owned-video", submittedById: "owner" },
     });
+  });
+  test("removes R2-stored videos from R2, not ImageKit", async () => {
+    findOwned.mockResolvedValue({
+      imagekitFileId: null,
+      storageKey: "videos/owner/file.mp4",
+    });
+    expect((await DELETE(deleteRequest(), context)).status).toBe(204);
+    expect(deleteR2).toHaveBeenCalledWith("videos/owner/file.mp4");
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(deleteMany).toHaveBeenCalledTimes(1);
+  });
+  test("keeps the database entry when R2 removal fails", async () => {
+    findOwned.mockResolvedValue({
+      imagekitFileId: null,
+      storageKey: "videos/owner/file.mp4",
+    });
+    deleteR2.mockRejectedValueOnce(new Error("r2 down"));
+    expect((await DELETE(deleteRequest(), context)).status).toBe(502);
+    expect(deleteMany).not.toHaveBeenCalled();
   });
   test("keeps the database entry when ImageKit removal fails", async () => {
     fetchSpy.mockResolvedValue(

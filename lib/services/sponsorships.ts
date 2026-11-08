@@ -18,18 +18,17 @@ import {
   inlineSponsorIcon,
   normaliseSponsorIcon,
 } from "./sponsor-icons";
-import {
-  cleanupUploadedVideo,
-  uploadFileToImageKit,
-  uploadVideoToImageKit,
-  type UploadedAsset,
-} from "./imagekit";
+import { isUniqueViolation } from "@/lib/prisma-errors";
+import { cleanupUploadedVideo, uploadFileToImageKit } from "./imagekit";
+import { cleanupR2Object } from "./r2";
 import {
   parseSponsorshipFields,
+  parseSponsorVideoUpload,
   peakConcurrency,
   validateSponsorIcon,
 } from "./sponsorship-validation";
-import { readSubmissionForm, validateVideoFile } from "./video-validation";
+import { finishVideoUpload, type StoredVideo } from "./video-uploads";
+import { readSubmissionForm } from "./video-validation";
 
 /** Invalidate after any review decision so the navbar and feed update. */
 export const SPONSORSHIP_CACHE_TAG = "sponsorships";
@@ -201,43 +200,49 @@ export async function createSponsorshipBooking(request: Request) {
   const form = await readSubmissionForm(request);
   const booking = parseSponsorshipFields(form);
   const icon = await validateSponsorIcon(form.get("icon"));
-  const video =
+  // The video is already in R2; the form only names the finished upload.
+  const videoUpload =
     booking.placement === "FEED_VIDEO"
-      ? await validateVideoFile(form.get("video"))
+      ? parseSponsorVideoUpload(form.get("videoUpload"))
       : null;
-  if (booking.placement === "NAVBAR" && form.has("video")) {
+  if (booking.placement === "NAVBAR" && form.has("videoUpload")) {
     throw new ApiError(400, "Navbar sponsorships do not include a video.");
   }
 
   const startsAt = new Date();
   const schedule = { startsAt, endsAt: sponsorshipEndsAt(startsAt) };
-  // Fail before uploading anything when an admin publish has no free slot.
+  // Fail before storing anything when an admin publish has no free slot.
   if (user.isAdmin) await assertSlotFree(prisma, booking.placement, schedule);
+  if (
+    videoUpload &&
+    (await prisma.sponsorship.findUnique({
+      where: { videoStorageKey: videoUpload.key },
+      select: { id: true },
+    }))
+  ) {
+    throw new ApiError(409, "This booking was already sent.");
+  }
 
-  const uploaded: UploadedAsset[] = [];
+  let video: StoredVideo | null = null;
+  let iconFileId: string | undefined;
   try {
+    video = videoUpload
+      ? await finishVideoUpload(videoUpload, "sponsor", user.id)
+      : null;
     const iconAsset = await uploadSponsorIcon(
       booking.websiteUrl,
       icon?.file ?? null,
     );
-    if (iconAsset) uploaded.push(iconAsset);
-    const videoAsset = video
-      ? await uploadVideoToImageKit(
-          video.file,
-          video.extension,
-          "/eizoki/sponsors/videos",
-        )
-      : null;
-    if (videoAsset) uploaded.push(videoAsset);
+    iconFileId = iconAsset?.fileId;
 
     const data = {
       ...booking,
       bookedById: user.id,
       iconUrl: iconAsset?.url,
       iconImagekitFileId: iconAsset?.fileId,
-      videoUrl: videoAsset?.url,
-      videoImagekitFileId: videoAsset?.fileId,
-      durationSeconds: videoAsset?.duration,
+      videoUrl: video?.url,
+      videoStorageKey: video?.key,
+      durationSeconds: video?.durationSeconds,
     };
     const select = {
       id: true,
@@ -267,9 +272,13 @@ export async function createSponsorshipBooking(request: Request) {
       { isolationLevel: "Serializable" },
     );
   } catch (error) {
-    await Promise.all(
-      uploaded.map((asset) => cleanupUploadedVideo(asset.fileId)),
-    );
+    const duplicate = isUniqueViolation(error, "videoStorageKey");
+    await Promise.all([
+      iconFileId ? cleanupUploadedVideo(iconFileId) : null,
+      // A concurrent duplicate owns the video now; never delete it.
+      video && !duplicate ? cleanupR2Object(video.key) : null,
+    ]);
+    if (duplicate) throw new ApiError(409, "This booking was already sent.");
     throw error;
   }
 }

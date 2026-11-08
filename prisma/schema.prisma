@@ -61,7 +61,7 @@ enum VideoPromptStatus {
 }
 
 /// One catalog entry for both admin-curated and community-submitted videos.
-/// Created only after ImageKit confirms upload. Public reads require APPROVED
+/// Created only after the stored video is confirmed. Public reads require APPROVED
 /// and a publishedAt no later than the current time.
 model Video {
   id          String   @id @default(cuid())
@@ -85,7 +85,10 @@ model Video {
 
   /// Store the original asset. Derive preview transformations at delivery time.
   videoUrl        String
-  imagekitFileId  String @unique
+  /// Exactly one of these names the stored file: older uploads live on
+  /// ImageKit, new ones in R2 (enforced by a database check constraint).
+  imagekitFileId  String? @unique
+  storageKey      String? @unique
   durationSeconds Float?
 
   /// Keep the prompt verbatim; append our stable video reference URL on copy.
@@ -180,6 +183,8 @@ model Sponsorship {
   /// the editorial catalogue, favourites or search.
   videoUrl            String?
   videoImagekitFileId String? @unique
+  /// R2 object key for videos uploaded after the move off ImageKit.
+  videoStorageKey     String? @unique
   durationSeconds     Float?
 
   /// Every booking is one calendar month. The dates are set on approval.

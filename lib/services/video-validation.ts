@@ -2,17 +2,11 @@ import { z } from "zod";
 import { ApiError } from "@/lib/api-error";
 import { CATEGORY_LABELS } from "@/lib/videos";
 import { MAX_VIDEO_TAGS, VIDEO_TAG_VALUES } from "@/lib/video-tags";
-import {
-  MAX_VIDEO_BYTES,
-  MAX_VIDEO_REQUEST_BYTES,
-} from "@/lib/video-upload-limits";
+import { MAX_FORM_REQUEST_BYTES } from "@/lib/video-upload-limits";
+import { parseUploadedVideo } from "./video-uploads";
 
-export { MAX_VIDEO_BYTES } from "@/lib/video-upload-limits";
-const MIME_EXTENSIONS = {
-  "video/mp4": "mp4",
-  "video/quicktime": "mov",
-  "video/webm": "webm",
-} as const;
+/** Metadata plus the finished-upload reference; the video itself never comes here. */
+const MAX_SUBMISSION_JSON_BYTES = 1_000_000;
 
 const optionalText = (max: number) => z.string().trim().max(max).optional();
 const optionalUrl = z
@@ -83,94 +77,97 @@ export const videoMetadataSchema = z
 
 export type VideoSubmissionMetadata = z.infer<typeof videoMetadataSchema>;
 
-/** Bound the stream as well as Content-Length before buffering multipart data. */
-export async function readSubmissionForm(request: Request) {
-  const contentType = request.headers.get("content-type") ?? "";
-  if (!contentType.toLowerCase().startsWith("multipart/form-data;")) {
-    throw new ApiError(
-      415,
-      "Send multipart form data with file and metadata fields.",
-    );
+/** Read the stream with a byte cap, so Content-Length cannot be spoofed. */
+async function readBoundedBody(
+  request: Request,
+  maxBytes: number,
+  tooLarge: string,
+) {
+  if (Number(request.headers.get("content-length")) > maxBytes) {
+    throw new ApiError(413, tooLarge);
   }
-  if (Number(request.headers.get("content-length")) > MAX_VIDEO_REQUEST_BYTES) {
-    throw new ApiError(413, "The video must be no larger than 100 MB.");
-  }
-  if (!request.body) throw new ApiError(400, "The submission body is missing.");
-
+  if (!request.body) throw new ApiError(400, "The request body is missing.");
   let bytes = 0;
   let exceededLimit = false;
-  const boundedBody = request.body.pipeThrough(
+  const bounded = request.body.pipeThrough(
     new TransformStream<Uint8Array, Uint8Array>({
       transform(chunk, controller) {
         bytes += chunk.byteLength;
-        if (bytes > MAX_VIDEO_REQUEST_BYTES) {
+        if (bytes > maxBytes) {
           exceededLimit = true;
-          throw new ApiError(413, "The video must be no larger than 100 MB.");
+          throw new ApiError(413, tooLarge);
         }
         controller.enqueue(chunk);
       },
     }),
   );
+  return { bounded, exceeded: () => exceededLimit };
+}
 
+/** Small multipart forms only (sponsor fields and a 2 MB icon). */
+export async function readSubmissionForm(request: Request) {
+  const contentType = request.headers.get("content-type") ?? "";
+  if (!contentType.toLowerCase().startsWith("multipart/form-data;")) {
+    throw new ApiError(415, "Send multipart form data.");
+  }
+  const tooLarge = "The form is too large. Videos upload separately.";
+  const { bounded, exceeded } = await readBoundedBody(
+    request,
+    MAX_FORM_REQUEST_BYTES,
+    tooLarge,
+  );
   try {
-    return await new Response(boundedBody, {
+    return await new Response(bounded, {
       headers: { "content-type": contentType },
     }).formData();
   } catch {
-    if (exceededLimit)
-      throw new ApiError(413, "The video must be no larger than 100 MB.");
+    if (exceeded()) throw new ApiError(413, tooLarge);
     throw new ApiError(400, "The multipart submission is malformed.");
   }
 }
 
-export async function validateVideoFile(file: FormDataEntryValue | null) {
-  if (!(file instanceof File) || file.size === 0) {
-    throw new ApiError(400, "Choose a non-empty video file.");
+export async function readJsonBody(request: Request) {
+  const contentType = request.headers.get("content-type") ?? "";
+  if (!contentType.toLowerCase().startsWith("application/json")) {
+    throw new ApiError(415, "Send a JSON body.");
   }
-  if (file.size > MAX_VIDEO_BYTES)
-    throw new ApiError(413, "The video must be no larger than 100 MB.");
-  if (!Object.hasOwn(MIME_EXTENSIONS, file.type))
-    throw new ApiError(415, "Upload an MP4, MOV, or WebM video.");
-
-  const header = new Uint8Array(await file.slice(0, 12).arrayBuffer());
-  const isWebM =
-    header[0] === 0x1a &&
-    header[1] === 0x45 &&
-    header[2] === 0xdf &&
-    header[3] === 0xa3;
-  const isIsoMedia = new TextDecoder().decode(header.slice(4, 8)) === "ftyp";
-  if (file.type === "video/webm" ? !isWebM : !isIsoMedia) {
-    throw new ApiError(415, "The file contents do not match the video format.");
+  const tooLarge = "The request is too large.";
+  const { bounded, exceeded } = await readBoundedBody(
+    request,
+    MAX_SUBMISSION_JSON_BYTES,
+    tooLarge,
+  );
+  let text: string;
+  try {
+    text = await new Response(bounded).text();
+  } catch {
+    if (exceeded()) throw new ApiError(413, tooLarge);
+    throw new ApiError(400, "The request body could not be read.");
   }
-  return {
-    file,
-    extension: MIME_EXTENSIONS[file.type as keyof typeof MIME_EXTENSIONS],
-  };
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    throw new ApiError(400, "Send valid JSON.");
+  }
 }
 
+/**
+ * A submission is JSON: `{ metadata, upload }`. The video already sits in R2
+ * as an unfinished multipart upload; `upload` names it and lists its parts.
+ */
 export async function parseVideoSubmission(request: Request, isAdmin: boolean) {
-  const form = await readSubmissionForm(request);
+  const body = await readJsonBody(request);
   if (
-    [...form.keys()].some((key) => !["file", "metadata"].includes(key)) ||
-    form.getAll("file").length !== 1 ||
-    form.getAll("metadata").length !== 1
+    typeof body !== "object" ||
+    body === null ||
+    Array.isArray(body) ||
+    Object.keys(body).some((key) => !["metadata", "upload"].includes(key)) ||
+    !("metadata" in body) ||
+    !("upload" in body)
   ) {
-    throw new ApiError(400, "Provide exactly one file and one metadata field.");
+    throw new ApiError(400, "Provide exactly one metadata and one upload field.");
   }
-  const rawMetadata = form.get("metadata");
-  if (typeof rawMetadata !== "string" || rawMetadata.length > 64_000) {
-    throw new ApiError(
-      400,
-      "Provide metadata as a JSON object of at most 64,000 characters.",
-    );
-  }
-  let input: unknown;
-  try {
-    input = JSON.parse(rawMetadata);
-  } catch {
-    throw new ApiError(400, "Metadata must be valid JSON.");
-  }
-  const result = videoMetadataSchema.safeParse(input);
+  const result = videoMetadataSchema.safeParse(body.metadata);
   if (!result.success) {
     const issue = result.error.issues[0];
     throw new ApiError(
@@ -187,8 +184,5 @@ export async function parseVideoSubmission(request: Request, isAdmin: boolean) {
       "Only admins can feature videos or add curator notes.",
     );
   }
-  return {
-    ...(await validateVideoFile(form.get("file"))),
-    metadata: result.data,
-  };
+  return { metadata: result.data, upload: parseUploadedVideo(body.upload) };
 }

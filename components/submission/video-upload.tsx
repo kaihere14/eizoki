@@ -2,6 +2,7 @@
 
 import { useState, type RefObject } from "react";
 import { ArrowUpFromLine, Film, RefreshCw } from "lucide-react";
+import { MAX_VIDEO_LABEL } from "@/lib/video-upload-limits";
 
 type VideoUploadProps = {
   selection: { file: File; url: string } | null;
@@ -94,7 +95,7 @@ export function VideoUpload({
               id="submission-video-help"
               className="mt-6 text-[11.5px] text-zinc-500"
             >
-              MP4, MOV or WebM · Up to 100 MB
+              MP4, MOV or WebM · Up to {MAX_VIDEO_LABEL}
             </span>
           </button>
         )}

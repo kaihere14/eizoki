@@ -64,6 +64,46 @@ async function fillSubmission(page: Page) {
     .fill("Original creator");
 }
 
+const PART_URL = "https://r2.test.invalid/videos/test-user/part-1";
+
+/** Stand in for /api/uploads and R2, so no bytes leave the test. */
+async function mockStorage(page: Page) {
+  const state = { starts: 0, parts: 0 };
+  await page.route("**/api/uploads", (route) => {
+    state.starts++;
+    return route.fulfill({
+      status: 201,
+      json: {
+        upload: {
+          key: "videos/test-user/0b7c5c1e-9a55-4a8e-8f0e-1d2c3b4a5f60.mp4",
+          uploadId: "upload-id",
+          partSize: 10 * 1024 * 1024,
+          parts: [{ partNumber: 1, url: PART_URL }],
+        },
+      },
+    });
+  });
+  await page.route("**/api/uploads/abort", (route) =>
+    route.fulfill({ status: 204 }),
+  );
+  await page.route(PART_URL, (route) => {
+    const cors = {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "PUT",
+      "access-control-allow-headers": "*",
+      "access-control-expose-headers": "ETag",
+    };
+    if (route.request().method() === "OPTIONS")
+      return route.fulfill({ status: 204, headers: cors });
+    state.parts++;
+    return route.fulfill({
+      status: 200,
+      headers: { ...cors, etag: '"etag-1"' },
+    });
+  });
+  return state;
+}
+
 function receipt(approved = false) {
   return {
     video: {
@@ -118,16 +158,14 @@ test("submits only necessary metadata and confirms community review", async ({
   page,
 }) => {
   await openSubmission(page);
+  const storage = await mockStorage(page);
   let payload: Record<string, unknown> = {};
+  let uploadRef: Record<string, unknown> = {};
   await page.route("**/api/videos", async (route) => {
-    const data = await new Response(
-      Uint8Array.from(route.request().postDataBuffer()!),
-      {
-        headers: { "content-type": route.request().headers()["content-type"] },
-      },
-    ).formData();
-    expect(data.get("file")).toBeInstanceOf(File);
-    payload = JSON.parse(String(data.get("metadata")));
+    // The video went to storage; only metadata and the upload reference arrive.
+    const body = route.request().postDataJSON();
+    payload = body.metadata;
+    uploadRef = body.upload;
     await route.fulfill({ status: 201, json: receipt() });
   });
   await fillSubmission(page);
@@ -164,6 +202,11 @@ test("submits only necessary metadata and confirms community review", async ({
     "height",
   ])
     expect(payload).not.toHaveProperty(key);
+  expect(storage.parts).toBe(1);
+  expect(uploadRef).toMatchObject({
+    uploadId: "upload-id",
+    parts: [{ partNumber: 1, etag: '"etag-1"' }],
+  });
   await page.getByRole("button", { name: "Back to browsing" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
@@ -212,6 +255,7 @@ test("preserves input after errors and prevents duplicate submissions while uplo
   page,
 }) => {
   await openSubmission(page);
+  const storage = await mockStorage(page);
   await fillSubmission(page);
   let attempts = 0;
   let finish: (() => void) | undefined;
@@ -241,7 +285,7 @@ test("preserves input after errors and prevents duplicate submissions while uplo
     .getByRole("button", { name: "Submit for review", exact: true })
     .click();
   await expect(
-    page.getByRole("button", { name: "Uploading your video…" }),
+    page.getByRole("button", { name: "Saving your video…" }),
   ).toBeDisabled();
   await expect(
     page.getByRole("button", { name: "Close submission" }),
@@ -253,12 +297,15 @@ test("preserves input after errors and prevents duplicate submissions while uplo
     page.getByRole("heading", { name: "Thanks for sharing" }),
   ).toBeVisible();
   expect(attempts).toBe(2);
+  // A server failure may have consumed the upload, so the retry re-uploads.
+  expect(storage.starts).toBe(2);
 });
 
 test("shows admin publishing controls and the publication outcome", async ({
   page,
 }) => {
   await openSubmission(page, true);
+  await mockStorage(page);
   await page.route("**/api/videos", (route) =>
     route.fulfill({ status: 201, json: receipt(true) }),
   );
