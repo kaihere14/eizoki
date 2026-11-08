@@ -2,16 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import { LoaderCircle, Trash2 } from "lucide-react";
-import { removeMyVideo, type MyVideo } from "@/lib/my-videos";
+import { removeMyVideo } from "@/lib/my-videos";
 
 export function DeleteVideoDialog({
   video,
   onClose,
   onDeleted,
+  description,
 }: {
-  video: MyVideo;
+  video: { id: string; title: string };
   onClose: () => void;
   onDeleted: (id: string) => void;
+  /** Overrides the default copy, which assumes the viewer is the uploader. */
+  description?: string;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const busyRef = useRef(false);
@@ -78,7 +81,8 @@ export function DeleteVideoDialog({
         id="delete-video-description"
         className="mt-2 break-words text-[13px] leading-relaxed text-zinc-500"
       >
-        “{video.title}” will be removed from your uploads and the collection.
+        {description ??
+          `“${video.title}” will be removed from your uploads and the collection.`}{" "}
         This also deletes the uploaded file and cannot be undone.
       </p>
       {error && (

@@ -125,7 +125,9 @@ describe("GET /api/videos", () => {
         category: "ai-motion-design",
         tags: ["iridescent"],
         isFeatured: true,
-        videoUrl: "https://ik.imagekit.io/eizoki/videos/drift.mp4",
+        // Served as the original upload so playback never needs ImageKit's
+        // video-processing quota.
+        videoUrl: "https://ik.imagekit.io/eizoki/videos/drift.mp4?tr=orig-true",
         durationSeconds: 18,
         creator: {
           name: "Mira Voss",

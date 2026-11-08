@@ -1,4 +1,5 @@
 import { findPublicVideoReference } from "@/lib/services/video-reference";
+import { playableVideoUrl } from "@/lib/video-delivery";
 
 const HEADERS = { "Cache-Control": "no-store" };
 
@@ -16,7 +17,7 @@ export async function GET(
       );
     return new Response(null, {
       status: 307,
-      headers: { ...HEADERS, Location: video.videoUrl },
+      headers: { ...HEADERS, Location: playableVideoUrl(video.videoUrl) },
     });
   } catch {
     return Response.json(

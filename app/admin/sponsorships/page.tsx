@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
+import { connection } from "next/server";
 import { PageIntro } from "@/components/page-intro";
+import { AdminTabs } from "@/components/admin/admin-tabs";
 import { SponsorshipReviewList } from "@/components/admin/sponsorship-review";
-import { prisma } from "@/lib/prisma";
+import { isAdminRequest } from "@/lib/services/admin";
 import { listSponsorshipsForAdmin } from "@/lib/services/sponsorships";
+import { countAdminQueues } from "@/lib/services/video-review";
 
 export const metadata: Metadata = {
   title: "Sponsorships",
@@ -13,17 +15,15 @@ export const metadata: Metadata = {
 };
 
 async function AdminSponsorships() {
-  const { userId } = await auth();
-  // Privilege comes from Postgres. Non-admins see a plain 404.
-  const user = userId
-    ? await prisma.user.findUnique({
-        where: { clerkId: userId },
-        select: { isAdmin: true },
-      })
-    : null;
-  if (!user?.isAdmin) notFound();
+  // Non-admins see a plain 404, including the tabs.
+  if (!(await isAdminRequest())) notFound();
+  // "Now" splits live from scheduled bookings: read it per request.
+  await connection();
 
-  const rows = await listSponsorshipsForAdmin();
+  const [rows, counts] = await Promise.all([
+    listSponsorshipsForAdmin(),
+    countAdminQueues(),
+  ]);
   const now = new Date();
   const serialised = rows.map((row) => ({
     ...row,
@@ -34,7 +34,10 @@ async function AdminSponsorships() {
     bookedByEmail: row.bookedBy?.email ?? null,
   }));
   return (
-    <SponsorshipReviewList rows={serialised} now={now.toISOString()} />
+    <>
+      <AdminTabs active="sponsorships" counts={counts} />
+      <SponsorshipReviewList rows={serialised} now={now.toISOString()} />
+    </>
   );
 }
 

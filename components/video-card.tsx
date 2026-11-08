@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, Check, Copy, Film } from "lucide-react";
+import { ArrowUpRight, Check, Copy, Film, Trash2 } from "lucide-react";
 import { animateFavouriteSave } from "@/lib/favourite-animation";
 import { FavouriteButton } from "@/components/favourite-button";
 import { useViewportVideo } from "@/components/use-viewport-video";
@@ -34,11 +34,14 @@ export function VideoCard({
   onOpen,
   paused = false,
   className,
+  onDelete,
 }: {
   video: VideoMetadata;
   onOpen: (video: VideoMetadata) => void;
   paused?: boolean;
   className?: string;
+  /** Shown only to admins on the feed; the server authorises the delete. */
+  onDelete?: (video: VideoMetadata) => void;
 }) {
   const cardRef = useRef<HTMLButtonElement>(null);
   const { videoRef, shouldLoad } = useViewportVideo(cardRef, paused);
@@ -165,6 +168,18 @@ export function VideoCard({
           videoId={video.id}
           videoTitle={video.title}
         />
+
+        {onDelete && (
+          <button
+            type="button"
+            onClick={() => onDelete(video)}
+            aria-label={`Delete ${video.title}`}
+            title="Delete video"
+            className={`${CARD_ACTION_CLASS} hover:!text-red-600`}
+          >
+            <Trash2 className="h-3 w-3" strokeWidth={1.9} aria-hidden="true" />
+          </button>
+        )}
       </div>
     </div>
   );

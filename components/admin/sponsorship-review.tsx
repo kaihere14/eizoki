@@ -7,7 +7,7 @@ import {
   cancelAction,
   rejectAction,
   type ReviewState,
-} from "@/app/admin/sponsorship/actions";
+} from "@/app/admin/sponsorships/actions";
 import {
   SPONSOR_CAPACITY,
   SPONSORSHIP_LABELS,

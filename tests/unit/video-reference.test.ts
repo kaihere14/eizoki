@@ -39,7 +39,7 @@ describe("video reference", () => {
     const response = await GET(request, context());
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
-      "https://ik.imagekit.io/example/video.mp4",
+      "https://ik.imagekit.io/example/video.mp4?tr=orig-true",
     );
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(findFirst.mock.calls[0][0]).toMatchObject({

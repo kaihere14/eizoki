@@ -11,6 +11,7 @@ import {
   type PublicSponsor,
   type SponsorshipPlacement,
 } from "@/lib/sponsorships";
+import { playableVideoUrl } from "@/lib/video-delivery";
 import { requireUser } from "./current-user";
 import {
   fetchWebsiteIcon,
@@ -162,7 +163,10 @@ export async function getLiveFeedSponsor(): Promise<PublicFeedSponsor | null> {
     cacheLife({ stale: 60, revalidate, expire: 60 * 60 * 24 });
     const row = live[0];
     return row?.videoUrl
-      ? { ...(await toPublicSponsor(row)), videoUrl: row.videoUrl }
+      ? {
+          ...(await toPublicSponsor(row)),
+          videoUrl: playableVideoUrl(row.videoUrl),
+        }
       : null;
   } catch (error) {
     logReadFailure("Feed sponsor could not be loaded", error);
@@ -308,7 +312,7 @@ async function assertSlotFree(
 }
 
 export async function listSponsorshipsForAdmin() {
-  return prisma.sponsorship.findMany({
+  const rows = await prisma.sponsorship.findMany({
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: 200,
     select: {
@@ -329,6 +333,10 @@ export async function listSponsorshipsForAdmin() {
       bookedBy: { select: { email: true } },
     },
   });
+  return rows.map((row) => ({
+    ...row,
+    videoUrl: row.videoUrl ? playableVideoUrl(row.videoUrl) : null,
+  }));
 }
 
 export type AdminSponsorship = Awaited<

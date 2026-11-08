@@ -3,12 +3,13 @@
 import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Search, Settings } from "lucide-react";
+import { Search, Settings, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useLoginModal } from "@/components/login-modal";
 import { AccountControl } from "@/components/auth/account-control";
 import { useUser } from "@clerk/nextjs";
 import { SubmissionDialog } from "@/components/submission/submission-dialog";
+import { useEizokiUser } from "@/components/user-provider";
 
 interface NavbarProps {
   /** Server-rendered sponsor icons; see components/navbar-sponsors.tsx. */
@@ -71,6 +72,8 @@ export function Navbar({
   onLoginClick,
 }: NavbarProps) {
   const { openLoginModal } = useLoginModal();
+  // Visibility only: /admin and every admin action re-check Postgres.
+  const isAdmin = useEizokiUser().user?.isAdmin === true;
 
   const handleLoginClick = onLoginClick ?? openLoginModal;
   const { isSignedIn } = useUser();
@@ -420,6 +423,18 @@ export function Navbar({
           {/* Right Section: Plus, Tactile Submit button & Settings */}
           <div className="flex items-center gap-2 sm:gap-2.5">
             {sponsorSlot}
+
+            {isAdmin && (
+              <HoverHint label="Admin">
+                <Link
+                  href="/admin"
+                  aria-label="Admin"
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-zinc-500 hover:text-brand hover:bg-brand/5 border border-transparent active:scale-[0.96] transition-[background-color,color,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300"
+                >
+                  <ShieldCheck className="w-4 h-4" strokeWidth={1.8} />
+                </Link>
+              </HoverHint>
+            )}
 
             {/* Tactile "Submit" button in the theme brand colour with 3D top highlight */}
             <button

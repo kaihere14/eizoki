@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AVATAR_IMAGES } from "@/lib/user";
+import { playableVideoUrl } from "@/lib/video-delivery";
 import {
   CATEGORY_LABELS,
   type CreatorProfile,
@@ -112,7 +113,7 @@ export function toVideoMetadata(row: VideoFeedRow): VideoMetadata {
     category: row.category as VideoCategory,
     tags: row.tags,
     isFeatured: row.isFeatured,
-    videoUrl: row.videoUrl,
+    videoUrl: playableVideoUrl(row.videoUrl),
     durationSeconds: row.durationSeconds ?? undefined,
     creator: {
       name: row.creatorName,

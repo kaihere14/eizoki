@@ -2,7 +2,9 @@
 
 import { Fragment, useEffect, useState } from "react";
 import { Film, LoaderCircle, RefreshCw } from "lucide-react";
+import { DeleteVideoDialog } from "@/components/delete-video-dialog";
 import { SkeletonFeed } from "@/components/skeleton-feed";
+import { useEizokiUser } from "@/components/user-provider";
 import { SponsoredVideoCard } from "@/components/sponsored-video-card";
 import { VideoCard } from "@/components/video-card";
 import { VideoPreview } from "@/components/video-preview";
@@ -30,6 +32,9 @@ export function VideoFeed() {
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [selected, setSelected] = useState<VideoMetadata | null>(null);
   const [sponsor, setSponsor] = useState<PublicFeedSponsor | null>(null);
+  const [deleting, setDeleting] = useState<VideoMetadata | null>(null);
+  // Only reveals the control; the API re-checks admin in Postgres.
+  const isAdmin = useEizokiUser().user?.isAdmin === true;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -163,8 +168,9 @@ export function VideoFeed() {
             <VideoCard
               video={video}
               onOpen={setSelected}
-              paused={selected !== null}
+              paused={selected !== null || deleting !== null}
               className="mb-5 sm:mb-6"
+              onDelete={isAdmin ? setDeleting : undefined}
             />
           </Fragment>
         ))}
@@ -200,6 +206,19 @@ export function VideoFeed() {
             )}
           </button>
         </div>
+      )}
+
+      {deleting && (
+        <DeleteVideoDialog
+          video={deleting}
+          description={`“${deleting.title}” by ${deleting.creator.name} will be taken down from the collection.`}
+          onClose={() => setDeleting(null)}
+          onDeleted={(id) => {
+            setVideos((current) => current.filter((video) => video.id !== id));
+            setSelected((current) => (current?.id === id ? null : current));
+            setDeleting(null);
+          }}
+        />
       )}
 
       {selected && (

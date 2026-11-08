@@ -149,11 +149,29 @@ describe("private video management", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(deleteMany).not.toHaveBeenCalled();
   });
-  test("admin status does not bypass upload ownership", async () => {
-    findUser.mockResolvedValue({ id: "owner", isAdmin: true });
+  test("an admin (per Postgres) can delete any user's video", async () => {
+    findUser.mockResolvedValue({ id: "admin", isAdmin: true });
+    expect((await DELETE(deleteRequest(), context)).status).toBe(204);
+    expect(findOwned.mock.calls[0][0]).toMatchObject({
+      where: { id: "owned-video" },
+    });
+    expect(deleteMany.mock.calls[0][0]).toEqual({
+      where: { id: "owned-video" },
+    });
+  });
+  test("a client claiming admin cannot widen the delete", async () => {
+    // The request carries no say in privilege; only the database row counts.
+    findUser.mockResolvedValue({ id: "intruder", isAdmin: false });
     findOwned.mockResolvedValue(null);
-    expect((await DELETE(deleteRequest(), context)).status).toBe(404);
+    const request = new Request(deleteRequest(), {
+      headers: { "x-is-admin": "true" },
+    });
+    expect((await DELETE(request, context)).status).toBe(404);
+    expect(findOwned.mock.calls[0][0]).toMatchObject({
+      where: { id: "owned-video", submittedById: "intruder" },
+    });
     expect(fetchSpy).not.toHaveBeenCalled();
+    expect(deleteMany).not.toHaveBeenCalled();
   });
   test("removes the ImageKit asset before the ownership-scoped database entry", async () => {
     deleteMany.mockImplementationOnce(async () => {

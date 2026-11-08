@@ -37,10 +37,16 @@ export async function listMyVideos(
   };
 }
 
+/**
+ * Delete a video and its file. Allowed for the uploader, or for an admin.
+ * `isAdmin` is read from Postgres by requireSubmissionUser, never from the
+ * request, so a tampered client cannot grant itself the right to delete.
+ */
 export async function deleteMyVideo(id: string) {
   const user = await requireSubmissionUser("Sign in to delete a video.");
+  const where = user.isAdmin ? { id } : { id, submittedById: user.id };
   const owned = await prisma.video.findFirst({
-    where: { id, submittedById: user.id },
+    where,
     select: { imagekitFileId: true },
   });
   // Missing and someone else's video have the same response.
@@ -55,7 +61,7 @@ export async function deleteMyVideo(id: string) {
   }
   try {
     // Repeat the ownership condition on the mutation; concurrent deletion is safe.
-    await prisma.video.deleteMany({ where: { id, submittedById: user.id } });
+    await prisma.video.deleteMany({ where });
   } catch {
     // ImageKit 404 is treated as success, so retrying completes this partial deletion.
     throw new ApiError(

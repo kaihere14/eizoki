@@ -440,7 +440,7 @@ export function Sponsorship() {
             <p className="mt-2 text-[12.5px] text-zinc-500">
               {submit.status === "done"
                 ? submit.live
-                  ? `It is showing as a ${SPONSORSHIP_LABELS[plan.placement].toLowerCase()} now${submit.endsAt ? ` and runs until ${endDate.format(new Date(submit.endsAt))}` : ""}. Manage it from the admin sponsorship page.`
+                  ? `It is showing as a ${SPONSORSHIP_LABELS[plan.placement].toLowerCase()} now${submit.endsAt ? ` and runs until ${endDate.format(new Date(submit.endsAt))}` : ""}. Manage it under Admin → Sponsorships.`
                   : "Thank you. We review every booking by hand and will email you to confirm timing and payment before anything goes live."
                 : isAdmin
                   ? "Admin booking: it skips review and payment, and goes live immediately for one month."
