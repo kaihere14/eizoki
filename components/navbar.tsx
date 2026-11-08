@@ -455,13 +455,13 @@ export function Navbar({
 
             {/* Reserved slot for future sponsors / featured projects */}
             <HoverHint label="Become a Sponsor">
-              <button
-                type="button"
+              <Link
+                href="/sponsor"
                 aria-label="Become a Sponsor"
                 className="relative w-7 h-7 rounded-[7px] flex items-center justify-center text-zinc-400 bg-zinc-50/40 border border-dashed border-zinc-300 hover:text-brand hover:bg-brand/5 hover:border-brand/70 focus-visible:outline-none focus-visible:border-brand focus-visible:text-brand active:scale-[0.94] transition-[background-color,border-color,color,transform] duration-150 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" strokeWidth={1.9} />
-              </button>
+              </Link>
             </HoverHint>
 
             {/* Tactile "Submit" button in the theme brand colour with 3D top highlight */}
