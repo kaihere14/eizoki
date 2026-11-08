@@ -76,7 +76,7 @@ export function Navbar({
   const isAdmin = useEizokiUser().user?.isAdmin === true;
 
   const handleLoginClick = onLoginClick ?? openLoginModal;
-  const { isSignedIn } = useUser();
+  const { isSignedIn, user: clerkUser } = useUser();
   const [submissionOpen, setSubmissionOpen] = useState(false);
   const handleSubmitClick =
     onSubmitClick ??
@@ -381,7 +381,12 @@ export function Navbar({
                 )}
               </AnimatePresence>
 
-              <AccountControl onLogin={handleLoginClick} />
+              {/* Keyed by account so menu state (open, "Signing out…") never
+                  survives a sign-out and a later sign-in without a reload. */}
+              <AccountControl
+                key={clerkUser?.id ?? "signed-out"}
+                onLogin={handleLoginClick}
+              />
               {/* My Videos & Favourites share the sliding highlight */}
               <Link
                 ref={myVideosRef}

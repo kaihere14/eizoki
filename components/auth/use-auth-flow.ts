@@ -60,7 +60,29 @@ export function useAuthFlow(onSuccess: () => void) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [legalAccepted, setLegalAccepted] = useState(false);
+  /** Set while the browser is leaving for an OAuth provider. */
+  const [redirecting, setRedirecting] = useState<"Google" | "X" | null>(null);
   const running = useRef(false);
+
+  // Returning with the Back button restores this page from the bfcache with
+  // the spinner still showing; clear it so the buttons work again.
+  useEffect(() => {
+    const restore = (event: PageTransitionEvent) => {
+      if (event.persisted) setRedirecting(null);
+    };
+    window.addEventListener("pageshow", restore);
+    return () => window.removeEventListener("pageshow", restore);
+  }, []);
+
+  /**
+   * Clerk keeps the last sign-in attempt on the client. After signing out
+   * (without a reload) that attempt is already complete, and starting a new
+   * flow on it does nothing. Clear any finished or stale attempt first.
+   */
+  const freshAttempt = async () => {
+    if (signIn.id) await signIn.reset();
+    if (signUp.id) await signUp.reset();
+  };
 
   useEffect(() => {
     if (!cooldown) return;
@@ -97,6 +119,7 @@ export function useAuthFlow(onSuccess: () => void) {
     : supportedFactors[0]?.strategy || factor;
   const busy =
     working ||
+    redirecting !== null ||
     signInFetch === "fetching" ||
     signUpFetch === "fetching" ||
     !clerk.loaded;
@@ -155,6 +178,7 @@ export function useAuthFlow(onSuccess: () => void) {
         return;
       }
       if (!pathname.startsWith("/sign-in")) rememberAuthReturn();
+      await freshAttempt();
       const created = await signIn.create({
         identifier: email.trim(),
         signUpIfMissing: true,
@@ -227,12 +251,20 @@ export function useAuthFlow(onSuccess: () => void) {
   const provider = (name: "Google" | "X") =>
     run(async () => {
       if (!pathname.startsWith("/sign-in")) rememberAuthReturn();
-      const result = await signIn.sso({
-        strategy: name === "Google" ? "oauth_google" : "oauth_x",
-        redirectCallbackUrl: "/sso-callback",
-        redirectUrl: "/sign-in/tasks",
-      });
-      if (result.error) throw result.error;
+      // Stays set on success: the page is navigating away to the provider.
+      setRedirecting(name);
+      try {
+        await freshAttempt();
+        const result = await signIn.sso({
+          strategy: name === "Google" ? "oauth_google" : "oauth_x",
+          redirectCallbackUrl: "/sso-callback",
+          redirectUrl: "/sign-in/tasks",
+        });
+        if (result.error) throw result.error;
+      } catch (error) {
+        setRedirecting(null);
+        throw error;
+      }
     });
 
   const completeDetails = () =>
@@ -325,6 +357,7 @@ export function useAuthFlow(onSuccess: () => void) {
     error: error || (callbackError ? authErrorMessage(callbackError) : null),
     notice,
     busy,
+    redirecting,
     step,
     cooldown,
     signIn,

@@ -1,16 +1,27 @@
 "use client";
 
 import { useEffect, useId, useRef, type RefObject } from "react";
+import { LoaderCircle } from "lucide-react";
 import { useAuthFlow } from "./use-auth-flow";
 import { GoogleIcon, XIcon } from "./provider-icons";
 import CodeSlots from "./CodeSlots";
 
 const inputClass =
   "mt-2 h-11 w-full rounded-[10px] border border-zinc-300 bg-white px-3.5 text-[14px] text-zinc-900 outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-zinc-400 hover:border-zinc-400 focus:border-brand focus:ring-4 focus:ring-brand/15 disabled:opacity-60";
+// Raised, tactile buttons matching the navbar Submit and sponsor buttons.
 const primaryClass =
-  "mt-3.5 flex h-11 w-full items-center justify-center rounded-full border border-white/20 bg-brand text-[14px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_2px_4px_var(--brand-shadow)] transition-[background-color,transform,box-shadow] duration-150 ease-out hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.97] cursor-pointer disabled:cursor-wait disabled:opacity-60";
+  "mt-3.5 flex h-11 w-full items-center justify-center gap-2 rounded-full border border-white/20 bg-brand text-[14px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.45),inset_0_-1px_1px_rgba(0,0,0,0.08),0_2px_4px_var(--brand-shadow),0_8px_18px_-8px_var(--brand-shadow)] transition-[background-color,transform,box-shadow] duration-150 ease-out hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.97] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.18),0_1px_2px_var(--brand-shadow)] cursor-pointer disabled:cursor-wait disabled:opacity-60";
 const socialClass =
-  "flex h-11 w-full items-center justify-center gap-2 rounded-full bg-zinc-100 text-[14px] font-medium text-zinc-900 transition-[background-color,transform] duration-150 hover:bg-zinc-200/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.99] disabled:cursor-wait disabled:opacity-60";
+  "flex h-11 w-full items-center justify-center gap-2 rounded-full border border-white bg-[linear-gradient(180deg,#fff_0%,#fafafa_52%,#f1f1f3_100%)] text-[14px] font-medium text-zinc-900 shadow-[inset_0_1px_0_#fff,inset_0_-1px_1px_rgba(0,0,0,0.06),0_1px_1px_rgba(9,9,11,0.06),0_4px_10px_-4px_rgba(9,9,11,0.14),0_12px_26px_-14px_rgba(9,9,11,0.22)] transition-[box-shadow,transform] duration-150 ease-out hover:shadow-[inset_0_1px_0_#fff,inset_0_-1px_1px_rgba(0,0,0,0.06),0_1px_1px_rgba(9,9,11,0.07),0_6px_14px_-5px_rgba(9,9,11,0.16),0_16px_32px_-16px_rgba(9,9,11,0.24)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.985] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.10),inset_0_1px_0_rgba(255,255,255,0.9),0_1px_1px_rgba(9,9,11,0.05)] cursor-pointer disabled:cursor-wait disabled:opacity-60";
+
+function Spinner() {
+  return (
+    <LoaderCircle
+      className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none"
+      aria-hidden="true"
+    />
+  );
+}
 const quietClass =
   "rounded text-[12px] text-zinc-600 underline underline-offset-4 hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-50";
 
@@ -76,19 +87,31 @@ export function AuthForm({
               type="button"
               disabled={flow.busy}
               onClick={() => flow.provider("Google")}
+              aria-busy={flow.redirecting === "Google"}
               className={socialClass}
             >
-              <GoogleIcon className="h-[17px] w-[17px] shrink-0" />
-              Continue with Google
+              {flow.redirecting === "Google" ? (
+                <Spinner />
+              ) : (
+                <GoogleIcon className="h-[17px] w-[17px] shrink-0" />
+              )}
+              {flow.redirecting === "Google"
+                ? "Redirecting to Google…"
+                : "Continue with Google"}
             </button>
             <button
               type="button"
               disabled={flow.busy}
               onClick={() => flow.provider("X")}
+              aria-busy={flow.redirecting === "X"}
               className={socialClass}
             >
-              <XIcon className="h-[14px] w-[14px] shrink-0" />
-              Continue with X
+              {flow.redirecting === "X" ? (
+                <Spinner />
+              ) : (
+                <XIcon className="h-[14px] w-[14px] shrink-0" />
+              )}
+              {flow.redirecting === "X" ? "Redirecting to X…" : "Continue with X"}
             </button>
           </div>
           <div
@@ -282,7 +305,8 @@ export function AuthForm({
           disabled={flow.busy || (isCode && flow.codeStatus !== "idle")}
           className={primaryClass}
         >
-          {flow.busy
+          {flow.busy && !flow.redirecting && <Spinner />}
+          {flow.busy && !flow.redirecting
             ? "Please wait…"
             : isCode
               ? "Verify and continue"

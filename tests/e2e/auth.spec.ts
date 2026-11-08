@@ -127,6 +127,27 @@ test("custom email signup, session persistence, signout and returning-user login
     "src",
     /female-transparent\.png/,
   );
+
+  // Signing out and straight back in with Google must work without a reload,
+  // and the button must show that the redirect is under way.
+  await account.click();
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await page.route(/https:\/\/accounts\.google\.com\//, (route) =>
+    route.fulfill({ status: 200, body: "OAuth handoff verified" }),
+  );
+  const handoff = page.waitForRequest(
+    (request) =>
+      request.isNavigationRequest() &&
+      new URL(request.url()).hostname === "accounts.google.com",
+  );
+  await page.getByRole("button", { name: "Login", exact: true }).click();
+  await dialog
+    .getByRole("button", { name: "Continue with Google", exact: true })
+    .click();
+  await expect(
+    dialog.getByRole("button", { name: "Redirecting to Google…" }),
+  ).toBeVisible();
+  await handoff;
 });
 
 test("mobile dialog dismissal, focus return and Submit trigger", async ({
