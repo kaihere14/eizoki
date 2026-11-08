@@ -242,6 +242,22 @@ export async function deleteR2Object(key: string) {
 }
 
 /**
+ * Enough of the configuration to compare against the dashboard, nothing more.
+ * The account and access key IDs already appear in every presigned URL the
+ * browser receives; the secret is reported by length only.
+ */
+export function r2ConfigFingerprint() {
+  const clip = (value?: string) =>
+    value ? `${value.slice(0, 4)}…${value.slice(-4)} (${value.length} chars)` : "missing";
+  return {
+    accountId: clip(env("R2_ACCOUNT_ID")),
+    accessKeyId: clip(env("R2_ACCESS_KEY_ID")),
+    secretAccessKey: `${env("R2_SECRET_ACCESS_KEY")?.length ?? 0} chars`,
+    bucket: env("R2_BUCKET_NAME") ?? "missing",
+  };
+}
+
+/**
  * Whether the server can reach the bucket with its configured credentials.
  * Reports R2's error name only (for example InvalidAccessKeyId), never values.
  */

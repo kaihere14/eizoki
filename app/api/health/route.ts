@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { checkR2 } from "@/lib/services/r2";
+import { checkR2, r2ConfigFingerprint } from "@/lib/services/r2";
 
 /** Liveness probe that also verifies the Postgres and R2 connections. */
 export async function GET() {
@@ -12,7 +12,13 @@ export async function GET() {
   ]);
   const ok = database === "connected" && storage === "connected";
   return Response.json(
-    { status: ok ? "ok" : "error", database, storage },
+    {
+      status: ok ? "ok" : "error",
+      database,
+      storage,
+      // Only on failure, to compare with the R2 dashboard.
+      ...(storage === "connected" ? {} : { storageConfig: r2ConfigFingerprint() }),
+    },
     { status: ok ? 200 : 503, headers: { "Cache-Control": "no-store" } },
   );
 }
