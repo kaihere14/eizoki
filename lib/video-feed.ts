@@ -1,8 +1,11 @@
+import type { PublicFeedSponsor } from "@/lib/sponsorships";
 import type { VideoCategory, VideoMetadata } from "@/lib/videos";
 
 export interface VideoFeedPage {
   videos: VideoMetadata[];
   nextCursor: string | null;
+  /** Present only on the first page, when a feed sponsorship is live. */
+  sponsor: PublicFeedSponsor | null;
 }
 
 interface FeedOptions {
@@ -57,8 +60,18 @@ export async function fetchVideoFeed({
     throw new Error("The video feed returned an unexpected response.");
   }
 
+  const sponsor =
+    "sponsor" in body &&
+    typeof body.sponsor === "object" &&
+    body.sponsor !== null &&
+    "videoUrl" in body.sponsor &&
+    typeof body.sponsor.videoUrl === "string"
+      ? (body.sponsor as PublicFeedSponsor)
+      : null;
+
   return {
     videos: body.videos as VideoMetadata[],
     nextCursor: body.nextCursor,
+    sponsor,
   };
 }

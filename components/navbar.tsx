@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Search, Plus, Settings } from "lucide-react";
+import { Search, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useLoginModal } from "@/components/login-modal";
 import { AccountControl } from "@/components/auth/account-control";
@@ -11,30 +11,14 @@ import { useUser } from "@clerk/nextjs";
 import { SubmissionDialog } from "@/components/submission/submission-dialog";
 
 interface NavbarProps {
+  /** Server-rendered sponsor icons; see components/navbar-sponsors.tsx. */
+  sponsorSlot?: React.ReactNode;
   onSearchClick?: () => void;
   onSubmitClick?: () => void;
   onLoginClick?: () => void;
 }
 
-/**
- * Every sponsor link goes out with the same attribution so sponsors can see
- * exactly where the traffic came from. Future sponsors should use this helper.
- */
-const SPONSOR_UTM = {
-  source: "eizoki.com",
-  medium: "sponsorship",
-  campaign: "eizoki_sponsorship",
-} as const;
-
-function withSponsorUtm(href: string) {
-  const url = new URL(href);
-  url.searchParams.set("utm_source", SPONSOR_UTM.source);
-  url.searchParams.set("utm_medium", SPONSOR_UTM.medium);
-  url.searchParams.set("utm_campaign", SPONSOR_UTM.campaign);
-  return url.toString();
-}
-
-function HoverHint({
+export function HoverHint({
   label,
   children,
 }: {
@@ -81,6 +65,7 @@ function HoverHint({
 }
 
 export function Navbar({
+  sponsorSlot,
   onSearchClick,
   onSubmitClick,
   onLoginClick,
@@ -434,35 +419,7 @@ export function Navbar({
 
           {/* Right Section: Plus, Tactile Submit button & Settings */}
           <div className="flex items-center gap-2 sm:gap-2.5">
-            {/* Sponsored slot: DaemonDoc (opens in a new tab) */}
-            <HoverHint label="DaemonDoc">
-              <a
-                href={withSponsorUtm("https://daemondoc.online")}
-                target="_blank"
-                rel="sponsored noopener noreferrer"
-                aria-label="DaemonDoc — opens in a new tab"
-                className="relative w-7 h-7 rounded-[7px] flex items-center justify-center overflow-hidden bg-white border border-zinc-200/90 shadow-[0_1px_2px_rgba(9,9,11,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 focus-visible:ring-offset-2 active:scale-[0.94] transition-transform duration-150 cursor-pointer"
-              >
-                <Image
-                  src="/DaemonDoc.webp"
-                  alt="DaemonDoc"
-                  width={28}
-                  height={28}
-                  className="w-full h-full object-contain"
-                />
-              </a>
-            </HoverHint>
-
-            {/* Reserved slot for future sponsors / featured projects */}
-            <HoverHint label="Become a Sponsor">
-              <Link
-                href="/sponsor"
-                aria-label="Become a Sponsor"
-                className="relative w-7 h-7 rounded-[7px] flex items-center justify-center text-zinc-400 bg-zinc-50/40 border border-dashed border-zinc-300 hover:text-brand hover:bg-brand/5 hover:border-brand/70 focus-visible:outline-none focus-visible:border-brand focus-visible:text-brand active:scale-[0.94] transition-[background-color,border-color,color,transform] duration-150 cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" strokeWidth={1.9} />
-              </Link>
-            </HoverHint>
+            {sponsorSlot}
 
             {/* Tactile "Submit" button in the theme brand colour with 3D top highlight */}
             <button

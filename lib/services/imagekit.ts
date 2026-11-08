@@ -12,19 +12,31 @@ export type UploadedVideo = z.infer<typeof uploadedAssetSchema>;
 
 function authorization() {
   const key = process.env.IMAGEKIT_PRIVATE_KEY;
-  if (!key) throw new ApiError(503, "Video uploads are not configured yet.");
+  if (!key) throw new ApiError(503, "Uploads are not configured yet.");
   return `Basic ${Buffer.from(`${key}:`).toString("base64")}`;
 }
 
-export async function uploadVideoToImageKit(
+export type UploadedAsset = UploadedVideo;
+
+export function uploadVideoToImageKit(
   file: File,
   extension: string,
+  folder = "/eizoki/videos",
 ): Promise<UploadedVideo> {
+  return uploadFileToImageKit(file, extension, folder, "video");
+}
+
+export async function uploadFileToImageKit(
+  file: File,
+  extension: string,
+  folder: string,
+  noun: "video" | "image",
+): Promise<UploadedAsset> {
   const authHeader = authorization();
   const body = new FormData();
   body.set("file", file);
   body.set("fileName", `${randomUUID()}.${extension}`);
-  body.set("folder", "/eizoki/videos");
+  body.set("folder", folder);
   body.set("useUniqueFileName", "true");
   body.set("overwriteFile", "false");
   body.set("isPrivateFile", "false");
@@ -39,13 +51,13 @@ export async function uploadVideoToImageKit(
   } catch {
     throw new ApiError(
       502,
-      "The video upload could not be completed. Please try again.",
+      `The ${noun} upload could not be completed. Please try again.`,
     );
   }
   if (response.status !== 200 && response.status !== 201) {
     throw new ApiError(
       502,
-      "ImageKit could not store the video. Please try again.",
+      `ImageKit could not store the ${noun}. Please try again.`,
     );
   }
   const raw: unknown = await response.json().catch(() => null);
@@ -62,7 +74,7 @@ export async function uploadVideoToImageKit(
     }
     throw new ApiError(
       502,
-      "ImageKit returned incomplete video details. Please try again.",
+      `ImageKit returned incomplete ${noun} details. Please try again.`,
     );
   }
   return result.data;

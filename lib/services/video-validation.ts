@@ -84,7 +84,7 @@ export const videoMetadataSchema = z
 export type VideoSubmissionMetadata = z.infer<typeof videoMetadataSchema>;
 
 /** Bound the stream as well as Content-Length before buffering multipart data. */
-async function readSubmissionForm(request: Request) {
+export async function readSubmissionForm(request: Request) {
   const contentType = request.headers.get("content-type") ?? "";
   if (!contentType.toLowerCase().startsWith("multipart/form-data;")) {
     throw new ApiError(
@@ -123,7 +123,7 @@ async function readSubmissionForm(request: Request) {
   }
 }
 
-async function validateVideoFile(file: FormDataEntryValue | null) {
+export async function validateVideoFile(file: FormDataEntryValue | null) {
   if (!(file instanceof File) || file.size === 0) {
     throw new ApiError(400, "Choose a non-empty video file.");
   }

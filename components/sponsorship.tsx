@@ -1,8 +1,25 @@
 "use client";
 
 import Image from "next/image";
+import { useUser } from "@clerk/nextjs";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useLoginModal } from "@/components/login-modal";
+import { useEizokiUser } from "@/components/user-provider";
 import { sponsorWebsiteOrigin } from "@/lib/sponsor-website";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  MAX_SPONSOR_ICON_BYTES,
+  SPONSOR_ICON_TYPES,
+  SPONSORSHIP_LABELS,
+} from "@/lib/sponsorships";
+import { MAX_VIDEO_BYTES } from "@/lib/video-upload-limits";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import {
   ArrowRight,
   Check,
@@ -10,27 +27,38 @@ import {
   Film,
   Globe,
   ImagePlus,
+  LoaderCircle,
   Play,
   Plus,
   X,
 } from "lucide-react";
 
+const VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
+
+type SubmitState =
+  | { status: "idle" }
+  | { status: "submitting" }
+  | { status: "done"; live: boolean; endsAt: string | null }
+  | { status: "error"; message: string };
+
 const PLANS = [
   {
     id: "featured",
+    placement: "FEED_VIDEO",
     name: "Featured video",
     description: "Put your film where the inspiration starts.",
     details:
       "A sponsored video placement in the Eizoki feed, alongside the motion our community comes to discover.",
     features: [
-      "Video placement in the feed",
+      "Pinned video placement in the feed",
       "Creator credit and a destination link",
-      "Clearly labelled as sponsored",
+      "One month, clearly labelled as sponsored",
     ],
     icon: Film,
   },
   {
     id: "navbar",
+    placement: "NAVBAR",
     name: "Navbar sponsor",
     description: "A small mark with a constant presence.",
     details:
@@ -38,7 +66,7 @@ const PLANS = [
     features: [
       "Brand icon in the navbar",
       "Product name shown on hover",
-      "Direct link to your website",
+      "Direct link to your website for one month",
     ],
     icon: Globe,
   },
@@ -102,22 +130,53 @@ function PlacementPreview({ plan }: { plan: Plan }) {
   );
 }
 
+const endDate = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
+/**
+ * `/sponsor?plan=navbar` (the admin "+" in the navbar) opens a booking form
+ * directly. The parameter is consumed so closing and reopening still works.
+ */
+function PlanFromUrl({ onPlan }: { onPlan: (plan: Plan) => void }) {
+  const plan = useSearchParams().get("plan");
+  const router = useRouter();
+  const pathname = usePathname();
+  useEffect(() => {
+    const match = PLANS.find((item) => item.id === plan);
+    if (!match) return;
+    onPlan(match.id);
+    router.replace(pathname, { scroll: false });
+  }, [plan, onPlan, router, pathname]);
+  return null;
+}
+
 export function Sponsorship() {
   const [selected, setSelected] = useState<Plan | null>(null);
   const [reviewing, setReviewing] = useState(false);
   const [iconUrl, setIconUrl] = useState<string | null>(null);
+  const [iconFile, setIconFile] = useState<File | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const [submit, setSubmit] = useState<SubmitState>({ status: "idle" });
+  const { isSignedIn, user } = useUser();
+  const isAdmin = useEizokiUser().user?.isAdmin === true;
+  const router = useRouter();
+  const [emailDraft, setEmailDraft] = useState<string | null>(null);
+  const { openLoginModal } = useLoginModal();
   const [iconError, setIconError] = useState<string | null>(null);
   const [faviconWebsite, setFaviconWebsite] = useState<string | null>(null);
   const [draft, setDraft] = useState({
     name: "",
     website: "",
-    email: "",
     description: "",
-    video: "",
   });
   const bookingRef = useRef<HTMLElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
   const plan = PLANS.find((item) => item.id === selected);
 
   useEffect(() => {
@@ -146,13 +205,94 @@ export function Sponsorship() {
     nameRef.current?.focus({ preventScroll: true });
   }, [selected]);
 
+  // Default to the account email until the sponsor types their own.
+  const contactEmail =
+    emailDraft ?? user?.primaryEmailAddress?.emailAddress ?? "";
+
   function review(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (selected === "featured" && !videoFile) {
+      setVideoError("Choose the video you want featured.");
+      return;
+    }
+    setSubmit({ status: "idle" });
     setReviewing(true);
+  }
+
+  async function book() {
+    if (!plan || submit.status === "submitting") return;
+    if (!isSignedIn) {
+      openLoginModal();
+      return;
+    }
+    const body = new FormData();
+    body.set("placement", plan.placement);
+    body.set("productName", draft.name);
+    body.set("websiteUrl", draft.website);
+    body.set("contactEmail", contactEmail);
+    body.set("description", draft.description);
+    if (iconFile) body.set("icon", iconFile);
+    if (plan.placement === "FEED_VIDEO" && videoFile)
+      body.set("video", videoFile);
+
+    setSubmit({ status: "submitting" });
+    try {
+      const response = await fetch("/api/sponsorships", {
+        method: "POST",
+        body,
+      });
+      const result: unknown = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(
+          typeof result === "object" &&
+            result !== null &&
+            "error" in result &&
+            typeof result.error === "string"
+            ? result.error
+            : "The booking could not be sent. Please try again.",
+        );
+      }
+      const sponsorship =
+        typeof result === "object" && result !== null && "sponsorship" in result
+          ? (result.sponsorship as { status?: string; endsAt?: string | null })
+          : null;
+      const live = sponsorship?.status === "APPROVED";
+      setSubmit({ status: "done", live, endsAt: sponsorship?.endsAt ?? null });
+      if (live) {
+        // Show the new sponsor in the navbar and feed without a reload.
+        router.refresh();
+        window.dispatchEvent(new Event("eizoki:videos-changed"));
+      }
+    } catch (cause) {
+      setSubmit({
+        status: "error",
+        message:
+          cause instanceof Error
+            ? cause.message
+            : "The booking could not be sent. Please try again.",
+      });
+    }
+  }
+
+  // Stable so the URL reader's effect only reruns when `?plan=` changes.
+  const choosePlan = useCallback((id: Plan) => {
+    setSelected(id);
+    setReviewing(false);
+    setSubmit({ status: "idle" });
+    setVideoError(null);
+  }, []);
+
+  function closeBooking() {
+    setSelected(null);
+    setReviewing(false);
+    setSubmit({ status: "idle" });
   }
 
   return (
     <main className="mx-auto w-full max-w-[1000px] px-4 pb-24 sm:px-6">
+      <Suspense fallback={null}>
+        <PlanFromUrl onPlan={choosePlan} />
+      </Suspense>
       <section aria-labelledby="sponsor-plans" className="pt-3 sm:pt-6">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-2">
           <h2
@@ -211,10 +351,7 @@ export function Sponsorship() {
                   type="button"
                   aria-expanded={selected === item.id}
                   aria-controls="sponsor-booking"
-                  onClick={() => {
-                    setSelected(item.id);
-                    setReviewing(false);
-                  }}
+                  onClick={() => choosePlan(item.id)}
                   className={`${raisedButton} w-full`}
                 >
                   Explore {item.name.toLowerCase()}
@@ -244,7 +381,7 @@ export function Sponsorship() {
             ],
             [
               "Share your details",
-              "Send your link, name and brand assets when booking.",
+              "Send your link, name and brand assets. Each booking runs for one month.",
             ],
             [
               "We review and publish",
@@ -282,28 +419,44 @@ export function Sponsorship() {
                   id="booking-title"
                   className="font-display text-[22px] font-semibold tracking-tight"
                 >
-                  {reviewing
-                    ? "Your booking preview"
-                    : "Tell us about your product"}
+                  {submit.status === "done"
+                    ? submit.live
+                      ? "Sponsor is live"
+                      : "Booking received"
+                    : reviewing
+                      ? "Review your booking"
+                      : "Tell us about your product"}
                 </h2>
               </div>
               <button
                 type="button"
                 aria-label="Close booking details"
-                onClick={() => {
-                  setSelected(null);
-                  setReviewing(false);
-                }}
+                onClick={closeBooking}
                 className="rounded-full p-2 text-zinc-400 outline-none hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-brand"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
             <p className="mt-2 text-[12.5px] text-zinc-500">
-              Bookings open soon. You can preview your details here; nothing is
-              submitted or charged.
+              {submit.status === "done"
+                ? submit.live
+                  ? `It is showing as a ${SPONSORSHIP_LABELS[plan.placement].toLowerCase()} now${submit.endsAt ? ` and runs until ${endDate.format(new Date(submit.endsAt))}` : ""}. Manage it from the admin sponsorship page.`
+                  : "Thank you. We review every booking by hand and will email you to confirm timing and payment before anything goes live."
+                : isAdmin
+                  ? "Admin booking: it skips review and payment, and goes live immediately for one month."
+                  : "One month placement. Nothing is charged yet: we review your booking and email you to confirm the start date and payment."}
             </p>
-            {reviewing ? (
+            {submit.status === "done" ? (
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={closeBooking}
+                  className={raisedButton}
+                >
+                  Done
+                </button>
+              </div>
+            ) : reviewing ? (
               <div className="mt-6">
                 <div className="flex items-center gap-3">
                   <BrandIcon url={iconUrl} website={faviconWebsite} />
@@ -321,34 +474,59 @@ export function Sponsorship() {
                   <div>
                     <dt className="text-zinc-400">Contact email</dt>
                     <dd className="mt-1 break-all text-zinc-700">
-                      {draft.email}
+                      {contactEmail}
                     </dd>
                   </div>
-                  {selected === "featured" && (
+                  {selected === "featured" && videoFile && (
                     <div>
-                      <dt className="text-zinc-400">Video link</dt>
+                      <dt className="text-zinc-400">Video</dt>
                       <dd className="mt-1 break-all text-zinc-700">
-                        {draft.video}
+                        {videoFile.name}
                       </dd>
                     </div>
                   )}
+                  <div>
+                    <dt className="text-zinc-400">Duration</dt>
+                    <dd className="mt-1 text-zinc-700">One month</dd>
+                  </div>
                 </dl>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <button
                     type="button"
                     onClick={() => setReviewing(false)}
+                    disabled={submit.status === "submitting"}
                     className={raisedButton}
                   >
                     Edit details
                   </button>
                   <button
                     type="button"
-                    disabled
-                    className="rounded-full bg-zinc-200 px-5 py-2.5 text-[12.5px] font-medium text-zinc-500"
+                    onClick={book}
+                    disabled={submit.status === "submitting"}
+                    className="inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-[12.5px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_2px_4px_var(--brand-shadow)] outline-none transition-[background-color,transform] duration-150 hover:bg-brand-600 focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 motion-safe:active:scale-[0.97] disabled:cursor-wait disabled:opacity-70"
                   >
-                    Bookings opening soon
+                    {submit.status === "submitting" && (
+                      <LoaderCircle
+                        className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
+                        aria-hidden="true"
+                      />
+                    )}
+                    {submit.status === "submitting"
+                      ? isAdmin
+                        ? "Publishing…"
+                        : "Sending booking…"
+                      : !isSignedIn
+                        ? "Sign in to book"
+                        : isAdmin
+                          ? "Publish now"
+                          : "Send booking"}
                   </button>
                 </div>
+                {submit.status === "error" && (
+                  <p role="alert" className="mt-3 text-[12px] text-red-600">
+                    {submit.message}
+                  </p>
+                )}
               </div>
             ) : (
               <form onSubmit={review} className="mt-6">
@@ -399,29 +577,69 @@ export function Sponsorship() {
                       required
                       type="email"
                       autoComplete="email"
-                      value={draft.email}
-                      onChange={(event) =>
-                        setDraft({ ...draft, email: event.target.value })
-                      }
+                      value={contactEmail}
+                      onChange={(event) => setEmailDraft(event.target.value)}
                       className={fieldClass}
                       placeholder="you@your-product.com"
                     />
                   </label>
                   {selected === "featured" && (
-                    <label className="text-[12px] font-medium text-zinc-700">
-                      Video link
+                    <div className="text-[12px] font-medium text-zinc-700">
+                      Video
+                      <button
+                        type="button"
+                        onClick={() => videoRef.current?.click()}
+                        aria-describedby="sponsor-video-help"
+                        className={`${fieldClass} flex items-center gap-2 text-left`}
+                      >
+                        <Film
+                          className="h-3.5 w-3.5 shrink-0 text-zinc-400"
+                          aria-hidden="true"
+                        />
+                        <span
+                          className={`truncate ${videoFile ? "text-zinc-900" : "text-zinc-400"}`}
+                        >
+                          {videoFile ? videoFile.name : "Choose a video file"}
+                        </span>
+                      </button>
+                      <span
+                        id="sponsor-video-help"
+                        className="mt-1 block text-[11px] font-normal text-zinc-400"
+                      >
+                        MP4, MOV or WebM, up to 100 MB
+                      </span>
                       <input
-                        required
-                        type="url"
-                        pattern="https://.*"
-                        value={draft.video}
-                        onChange={(event) =>
-                          setDraft({ ...draft, video: event.target.value })
-                        }
-                        className={fieldClass}
-                        placeholder="https://…"
+                        ref={videoRef}
+                        type="file"
+                        accept={VIDEO_TYPES.join(",")}
+                        aria-label="Choose sponsored video"
+                        className="hidden"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          event.target.value = "";
+                          if (!file) return;
+                          if (
+                            !VIDEO_TYPES.includes(file.type) ||
+                            file.size > MAX_VIDEO_BYTES
+                          ) {
+                            setVideoError(
+                              "Choose an MP4, MOV or WebM video up to 100 MB.",
+                            );
+                            return;
+                          }
+                          setVideoError(null);
+                          setVideoFile(file);
+                        }}
                       />
-                    </label>
+                      {videoError && (
+                        <span
+                          role="alert"
+                          className="mt-1 block text-[12px] font-normal text-red-600"
+                        >
+                          {videoError}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
                 <label className="mt-5 block text-[12px] font-medium text-zinc-700">
@@ -460,6 +678,7 @@ export function Sponsorship() {
                       type="button"
                       onClick={() => {
                         setIconUrl(null);
+                        setIconFile(null);
                         setIconError(null);
                       }}
                       className="rounded p-1 text-[11px] text-zinc-500 outline-none focus-visible:ring-2 focus-visible:ring-brand"
@@ -479,10 +698,8 @@ export function Sponsorship() {
                     event.target.value = "";
                     if (!file) return;
                     if (
-                      !["image/png", "image/jpeg", "image/webp"].includes(
-                        file.type,
-                      ) ||
-                      file.size > 2_000_000
+                      !Object.hasOwn(SPONSOR_ICON_TYPES, file.type) ||
+                      file.size > MAX_SPONSOR_ICON_BYTES
                     ) {
                       setIconError(
                         "Choose a PNG, JPG or WebP image smaller than 2 MB.",
@@ -490,6 +707,7 @@ export function Sponsorship() {
                       return;
                     }
                     setIconError(null);
+                    setIconFile(file);
                     setIconUrl(URL.createObjectURL(file));
                   }}
                 />
@@ -500,7 +718,7 @@ export function Sponsorship() {
                 )}
                 <div className="mt-6 flex flex-wrap items-center gap-4">
                   <button type="submit" className={raisedButton}>
-                    Preview booking
+                    Review booking
                     <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
                   <span className="text-[11px] text-zinc-400">
@@ -511,47 +729,6 @@ export function Sponsorship() {
             )}
           </>
         )}
-      </section>
-
-      <section
-        className="mt-10 border-b border-zinc-200/70 pb-8"
-        aria-labelledby="sponsor-supporters"
-      >
-        <h2
-          id="sponsor-supporters"
-          className="font-display text-[17px] font-semibold"
-        >
-          Previous sponsors
-        </h2>
-        <p className="mt-2 text-[12.5px] leading-relaxed text-zinc-500">
-          A thank-you to the products that have supported the collection.
-        </p>
-        <a
-          href="https://daemondoc.online?utm_source=eizoki.com&utm_medium=sponsorship&utm_campaign=eizoki_sponsorship"
-          target="_blank"
-          rel="sponsored noopener noreferrer"
-          className="mt-5 inline-flex items-center gap-3 rounded-xl border border-zinc-200/80 bg-white px-4 py-3 outline-none transition-[border-color,box-shadow] hover:border-zinc-300 hover:shadow-sm focus-visible:ring-2 focus-visible:ring-brand"
-        >
-          <Image
-            src="/DaemonDoc.webp"
-            alt=""
-            width={36}
-            height={36}
-            className="rounded-lg object-contain"
-          />
-          <span>
-            <span className="block text-[13px] font-medium text-zinc-800">
-              DaemonDoc
-            </span>
-            <span className="mt-0.5 block text-[11px] text-zinc-400">
-              Navbar sponsor
-            </span>
-          </span>
-          <ArrowRight
-            className="ml-4 h-3.5 w-3.5 text-zinc-400"
-            aria-hidden="true"
-          />
-        </a>
       </section>
 
       <section className="mt-10" aria-labelledby="sponsor-questions">
@@ -568,15 +745,19 @@ export function Sponsorship() {
           ],
           [
             "What should I prepare?",
-            "Your product name, website, a short description and contact email. For a featured video, include a link to your film. You can also supply a square brand icon.",
+            "Your product name, website, a short description and contact email. For a featured video, upload your film (MP4, MOV or WebM, up to 100 MB). You can also supply a square brand icon.",
           ],
           [
             "Are sponsored videos labelled?",
             "Yes. Paid video placements carry a Sponsored label. Editorial features remain separate from paid placements.",
           ],
           [
-            "Can I book a placement today?",
-            "Bookings are not open yet. Explore both placements and preview your product details; pricing and checkout will be available when booking opens.",
+            "How long does a placement run?",
+            "Every booking runs for one calendar month. The navbar holds up to three sponsors and the feed one featured video at a time, so we confirm your start date when we review the booking.",
+          ],
+          [
+            "When do I pay?",
+            "Nothing is charged when you book. We review your booking first, then email you to confirm the start date and payment.",
           ],
         ].map(([question, answer]) => (
           <details

@@ -70,9 +70,15 @@ mock.module("@/lib/prisma", () => ({
   prisma: { video: { findMany } },
 }));
 
+const getLiveFeedSponsor = mock<() => Promise<unknown>>(async () => null);
+// The cached sponsor read needs the Next.js runtime; the route only composes it.
+mock.module("@/lib/services/sponsorships", () => ({ getLiveFeedSponsor }));
+
 const { GET } = await import("@/app/api/videos/route");
 
 beforeEach(() => {
+  getLiveFeedSponsor.mockClear();
+  getLiveFeedSponsor.mockResolvedValue(null);
   findMany.mockClear();
   findMany.mockResolvedValue([row()]);
   errorSpy.mockClear();
@@ -87,6 +93,24 @@ function request(query = "") {
 }
 
 describe("GET /api/videos", () => {
+  test("pins the live feed sponsor on the first page only", async () => {
+    const sponsor = {
+      id: "sponsorship-1",
+      productName: "DaemonDoc",
+      href: "https://daemondoc.online/?utm_source=eizoki.com",
+      iconUrl: null,
+      description: null,
+      videoUrl: "https://ik.imagekit.io/eizoki/sponsors/videos/launch.mp4",
+    };
+    getLiveFeedSponsor.mockResolvedValue(sponsor);
+    expect((await (await GET(request())).json()).sponsor).toEqual(sponsor);
+
+    getLiveFeedSponsor.mockClear();
+    const paged = await (await GET(request("cursor=video-1"))).json();
+    expect(paged.sponsor).toBeNull();
+    expect(getLiveFeedSponsor).not.toHaveBeenCalled();
+  });
+
   test("returns only public fields and maps the database record for the feed", async () => {
     const response = await GET(request());
     expect(response.status).toBe(200);

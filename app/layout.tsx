@@ -4,6 +4,7 @@ import Script from "next/script";
 import { Geist, Geist_Mono, Funnel_Display } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/navbar";
+import { NavbarSponsors } from "@/components/navbar-sponsors";
 import { LoginModalProvider } from "@/components/login-modal";
 import { ThemeProvider } from "@/components/theme-provider";
 import { UserProvider } from "@/components/user-provider";
@@ -136,7 +137,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-in">
             <UserProvider>
               <LoginModalProvider>
-                <Navbar />
+                <Navbar sponsorSlot={<NavbarSponsors />} />
                 {children}
               </LoginModalProvider>
             </UserProvider>

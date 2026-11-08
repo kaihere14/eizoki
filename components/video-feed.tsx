@@ -1,11 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Film, LoaderCircle, RefreshCw } from "lucide-react";
 import { SkeletonFeed } from "@/components/skeleton-feed";
+import { SponsoredVideoCard } from "@/components/sponsored-video-card";
 import { VideoCard } from "@/components/video-card";
 import { VideoPreview } from "@/components/video-preview";
 import { fetchVideoFeed } from "@/lib/video-feed";
+import {
+  FEED_SPONSOR_POSITION,
+  type PublicFeedSponsor,
+} from "@/lib/sponsorships";
 import type { VideoMetadata } from "@/lib/videos";
 
 type FeedStatus = "loading" | "ready" | "error";
@@ -24,6 +29,7 @@ export function VideoFeed() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [selected, setSelected] = useState<VideoMetadata | null>(null);
+  const [sponsor, setSponsor] = useState<PublicFeedSponsor | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -32,6 +38,7 @@ export function VideoFeed() {
       .then((page) => {
         setVideos(page.videos);
         setNextCursor(page.nextCursor);
+        setSponsor(page.sponsor);
         setStatus("ready");
       })
       .catch((cause: unknown) => {
@@ -122,6 +129,9 @@ export function VideoFeed() {
     );
   }
 
+  // Pinned at a fixed position; a short catalogue shows it last instead.
+  const sponsorIndex = Math.min(FEED_SPONSOR_POSITION, videos.length);
+
   return (
     <>
       {status === "error" && error && (
@@ -141,15 +151,30 @@ export function VideoFeed() {
       )}
 
       <div className="columns-1 gap-5 sm:columns-2 sm:gap-6 xl:columns-3">
-        {videos.map((video) => (
-          <VideoCard
-            key={video.id}
-            video={video}
-            onOpen={setSelected}
+        {videos.map((video, index) => (
+          <Fragment key={video.id}>
+            {sponsor && index === sponsorIndex && (
+              <SponsoredVideoCard
+                sponsor={sponsor}
+                paused={selected !== null}
+                className="mb-5 sm:mb-6"
+              />
+            )}
+            <VideoCard
+              video={video}
+              onOpen={setSelected}
+              paused={selected !== null}
+              className="mb-5 sm:mb-6"
+            />
+          </Fragment>
+        ))}
+        {sponsor && sponsorIndex === videos.length && (
+          <SponsoredVideoCard
+            sponsor={sponsor}
             paused={selected !== null}
             className="mb-5 sm:mb-6"
           />
-        ))}
+        )}
       </div>
 
       {nextCursor && (

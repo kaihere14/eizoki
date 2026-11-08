@@ -38,6 +38,9 @@ model User {
   reviewedVideos  Video[]     @relation("VideoReviewer")
   favourites      Favourite[]
 
+  bookedSponsorships   Sponsorship[] @relation("SponsorshipBooker")
+  reviewedSponsorships Sponsorship[] @relation("SponsorshipReviewer")
+
   @@map("users")
 }
 
@@ -129,4 +132,71 @@ model Favourite {
   @@index([userId, createdAt, id])
   @@index([videoId])
   @@map("favourites")
+}
+
+enum SponsorshipPlacement {
+  NAVBAR
+  FEED_VIDEO
+
+  @@map("sponsorship_placement")
+}
+
+/// Lifecycle only. Whether an APPROVED booking is live, scheduled or ended is
+/// derived from startsAt/endsAt at read time, so the status never goes stale.
+enum SponsorshipStatus {
+  /// Reserved for checkout; bookings skip it until payments exist.
+  PENDING_PAYMENT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  CANCELLED
+
+  @@map("sponsorship_status")
+}
+
+/// One paid placement: a navbar icon or a sponsored video pinned in the feed.
+/// Public reads require APPROVED and startsAt <= now < endsAt.
+model Sponsorship {
+  id        String               @id @default(cuid())
+  placement SponsorshipPlacement
+  status    SponsorshipStatus    @default(PENDING_REVIEW)
+
+  /// Null only for sponsors arranged directly, before self-serve booking.
+  bookedById   String?
+  bookedBy     User?   @relation("SponsorshipBooker", fields: [bookedById], references: [id], onDelete: SetNull)
+  /// Required for every self-serve booking; may be absent for direct deals.
+  contactEmail String?
+
+  productName String
+  /// Stored without tracking parameters; UTM is appended when rendering.
+  websiteUrl  String
+  description String?
+
+  /// Custom brand icon. Without one the website favicon is used.
+  iconUrl            String?
+  iconImagekitFileId String? @unique
+
+  /// FEED_VIDEO only. Kept separate from Video so paid placements never enter
+  /// the editorial catalogue, favourites or search.
+  videoUrl            String?
+  videoImagekitFileId String? @unique
+  durationSeconds     Float?
+
+  /// Every booking is one calendar month. The dates are set on approval.
+  startsAt  DateTime?
+  endsAt    DateTime?
+  sortOrder Int       @default(0)
+
+  reviewedById String?
+  reviewedBy   User?     @relation("SponsorshipReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt   DateTime?
+  reviewNotes  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([placement, status, startsAt, endsAt])
+  @@index([status, createdAt])
+  @@index([bookedById, createdAt])
+  @@index([reviewedById])
+  @@map("sponsorships")
 }

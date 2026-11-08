@@ -1,5 +1,6 @@
 import { submissionErrorResponse } from "@/lib/api-error";
 import { createVideoSubmission } from "@/lib/services/video-submissions";
+import { getLiveFeedSponsor } from "@/lib/services/sponsorships";
 import {
   listPublicVideos,
   videoFeedQuerySchema,
@@ -25,8 +26,15 @@ export async function GET(request: Request) {
   }
 
   try {
-    const page = await listPublicVideos(parsed.data);
-    return Response.json(page, { headers: FEED_HEADERS });
+    const [page, sponsor] = await Promise.all([
+      listPublicVideos(parsed.data),
+      // The sponsored card is pinned once, in the first page only.
+      parsed.data.cursor ? null : getLiveFeedSponsor(),
+    ]);
+    return Response.json(
+      { ...page, sponsor },
+      { headers: FEED_HEADERS },
+    );
   } catch (error) {
     if (
       typeof error === "object" &&
