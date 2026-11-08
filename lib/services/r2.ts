@@ -4,6 +4,7 @@ import {
   CreateMultipartUploadCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadBucketCommand,
   HeadObjectCommand,
   S3Client,
   S3ServiceException,
@@ -25,13 +26,21 @@ type R2Config = {
 
 let cached: R2Config | null = null;
 
+/**
+ * Values pasted into a hosting dashboard often carry a trailing newline or
+ * wrapping quotes; either one breaks request signing with no obvious cause.
+ */
+function env(name: string) {
+  return process.env[name]?.trim().replace(/^(["'])(.*)\1$/, "$2").trim() || undefined;
+}
+
 function config(): R2Config {
   if (cached) return cached;
-  const accountId = process.env.R2_ACCOUNT_ID;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-  const bucket = process.env.R2_BUCKET_NAME;
-  const publicUrl = process.env.R2_PUBLIC_URL?.replace(/\/+$/, "");
+  const accountId = env("R2_ACCOUNT_ID");
+  const accessKeyId = env("R2_ACCESS_KEY_ID");
+  const secretAccessKey = env("R2_SECRET_ACCESS_KEY");
+  const bucket = env("R2_BUCKET_NAME");
+  const publicUrl = env("R2_PUBLIC_URL")?.replace(/\/+$/, "");
   if (!accountId || !accessKeyId || !secretAccessKey || !bucket || !publicUrl) {
     throw new ApiError(503, "Uploads are not configured yet.");
   }
@@ -63,7 +72,27 @@ export function r2PublicUrl(key: string) {
   return `${config().publicUrl}/${key}`;
 }
 
-function providerError(action: string): never {
+/** R2's own error, without credentials, so a failure in production can be diagnosed. */
+function describe(error: unknown) {
+  if (error instanceof S3ServiceException) {
+    return {
+      name: error.name,
+      status: error.$metadata.httpStatusCode,
+      message: error.message,
+    };
+  }
+  return {
+    name: error instanceof Error ? error.name : "UnknownError",
+    message: error instanceof Error ? error.message : undefined,
+  };
+}
+
+function logFailure(operation: string, error: unknown) {
+  console.error(`R2 ${operation} failed`, describe(error));
+}
+
+function providerError(action: string, operation?: string, error?: unknown): never {
+  if (operation) logFailure(operation, error);
   throw new ApiError(502, `The video ${action} could not be completed. Please try again.`);
 }
 
@@ -87,7 +116,7 @@ export async function createMultipartUpload(key: string, contentType: string) {
     return result.UploadId;
   } catch (error) {
     if (error instanceof ApiError) throw error;
-    providerError("upload");
+    providerError("upload", "CreateMultipartUpload", error);
   }
 }
 
@@ -146,7 +175,7 @@ export async function completeMultipartUpload(
         "Some parts of the video did not arrive. Please upload it again.",
       );
     }
-    providerError("upload");
+    providerError("upload", "CompleteMultipartUpload", error);
   }
 }
 
@@ -159,6 +188,7 @@ export async function abortMultipartUpload(key: string, uploadId: string) {
   } catch (error) {
     // Already completed, aborted or expired: nothing left to clean up.
     if (errorName(error) === "NoSuchUpload") return;
+    logFailure("AbortMultipartUpload", error);
     throw error;
   }
 }
@@ -177,7 +207,7 @@ export async function headObject(key: string) {
   } catch (error) {
     const name = errorName(error);
     if (name === "NotFound" || name === "NoSuchKey") return null;
-    providerError("check");
+    providerError("check", "HeadObject", error);
   }
 }
 
@@ -195,15 +225,41 @@ export async function readObjectHeader(key: string, bytes: number) {
     return result.Body
       ? new Uint8Array(await result.Body.transformToByteArray())
       : new Uint8Array();
-  } catch {
-    providerError("check");
+  } catch (error) {
+    providerError("check", "GetObject", error);
   }
 }
 
 /** Idempotent: R2 answers success for keys that are already gone. */
 export async function deleteR2Object(key: string) {
   const { client, bucket } = config();
-  await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+  try {
+    await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+  } catch (error) {
+    logFailure("DeleteObject", error);
+    throw error;
+  }
+}
+
+/**
+ * Whether the server can reach the bucket with its configured credentials.
+ * Reports R2's error name only (for example InvalidAccessKeyId), never values.
+ */
+export async function checkR2() {
+  try {
+    const { client, bucket } = config();
+    await client.send(new HeadBucketCommand({ Bucket: bucket }));
+    return "connected";
+  } catch (error) {
+    if (error instanceof ApiError) return "not configured";
+    logFailure("HeadBucket", error);
+    const { name, status, message } = describe(error);
+    // HEAD replies carry no body, so R2 cannot name the problem itself.
+    if (status === 403) return "error: access denied (403), check the R2 keys";
+    if (status === 404) return "error: bucket not found (404), check R2_BUCKET_NAME";
+    if (status) return `error: ${name} (${status})`;
+    return `error: cannot reach R2 (${message?.slice(0, 80) ?? name}), check R2_ACCOUNT_ID`;
+  }
 }
 
 /** Compensation is best-effort and must never replace the original failure. */
