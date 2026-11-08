@@ -48,7 +48,10 @@ const findOwned = mock<
 const deleteMany = mock<(args: unknown) => Promise<{ count: number }>>(
   async () => ({ count: 1 }),
 );
-mock.module("@clerk/nextjs/server", () => ({ auth: loadAuth }));
+mock.module("@clerk/nextjs/server", () => ({
+  auth: loadAuth,
+  currentUser: mock(async () => null),
+}));
 mock.module("@/lib/prisma", () => ({
   prisma: {
     user: { findUnique: findUser },

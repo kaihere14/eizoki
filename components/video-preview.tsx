@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Image from "next/image";
 import { AVATAR_IMAGES } from "@/lib/user";
+import { FavouriteButton } from "@/components/favourite-button";
 import { useViewportVideo } from "@/components/use-viewport-video";
 import {
   promptWithVideoReference,
@@ -14,6 +15,7 @@ import {
   formatAspectRatio,
   formatDuration,
   formatPublishedAt,
+  originalVideoUrl,
   type PromptStatus,
   type VideoMetadata,
 } from "@/lib/videos";
@@ -226,11 +228,7 @@ export function VideoPreview({
         !video.creator.platform
       ? "Visit profile"
       : `Open on ${platformLabel}`;
-  // An account link is not an original-post link, even if supplied twice.
-  const originalUrl =
-    video.sourceUrl?.replace(/\/+$/, "") !== profileUrl?.replace(/\/+$/, "")
-      ? video.sourceUrl
-      : undefined;
+  const originalUrl = originalVideoUrl(video);
 
   const related = similar
     .filter((item) => item.id !== video.id)
@@ -334,6 +332,7 @@ export function VideoPreview({
             </div>
 
             <div className="mt-3 space-y-2">
+              <FavouriteButton videoId={video.id} videoTitle={video.title} />
               <button
                 type="button"
                 onClick={copyPrompt}

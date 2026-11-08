@@ -27,7 +27,7 @@ export function VideoUpload({
   }
 
   return (
-    <div className="min-w-0 lg:sticky lg:top-6 lg:self-start">
+    <div className="min-w-0 lg:self-center">
       <input
         ref={inputRef}
         id="submission-video"
@@ -59,7 +59,7 @@ export function VideoUpload({
           setDragging(false);
           if (!disabled) choose(event.dataTransfer.files[0]);
         }}
-        className={`relative flex min-h-[230px] items-center justify-center overflow-hidden rounded-[22px] border bg-white/80 transition-[border-color,background-color] duration-150 sm:min-h-[300px] lg:min-h-[410px] ${dragging ? "border-brand bg-brand-50" : selection ? "border-zinc-200/80" : "border-dashed border-zinc-300"}`}
+        className={`relative flex min-h-[230px] items-center justify-center overflow-hidden rounded-[22px] border bg-white/80 transition-[border-color,background-color] duration-150 sm:min-h-[300px] lg:h-[min(410px,calc(100dvh-320px))] lg:min-h-0 ${dragging ? "border-brand bg-brand-50" : selection ? "border-zinc-200/80" : "border-dashed border-zinc-300"}`}
       >
         {selection ? (
           <video
@@ -71,7 +71,7 @@ export function VideoUpload({
             muted
             playsInline
             aria-label="Your video preview"
-            className="block max-h-[460px] w-full bg-zinc-950 object-contain"
+            className="block max-h-[460px] w-full bg-zinc-950 object-contain lg:h-full lg:max-h-full"
             onError={() => setPreviewError(true)}
           />
         ) : (
@@ -79,7 +79,7 @@ export function VideoUpload({
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={disabled}
-            className="flex min-h-[230px] w-full cursor-pointer flex-col items-center justify-center px-5 py-12 text-center outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand sm:min-h-[300px] lg:min-h-[410px]"
+            className="flex min-h-[230px] w-full cursor-pointer flex-col items-center justify-center px-5 py-12 text-center outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand sm:min-h-[300px] lg:h-full lg:min-h-0 lg:py-4"
           >
             <span className="mb-5 flex h-12 w-12 items-center justify-center rounded-[14px] border border-zinc-200/80 bg-white text-zinc-500 shadow-[0_2px_4px_rgba(9,9,11,0.04)]">
               <Film className="h-5 w-5" strokeWidth={1.5} />

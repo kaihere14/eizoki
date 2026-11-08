@@ -95,6 +95,17 @@ export function formatAspectRatio(ratio?: number) {
   return `${Math.round(ratio * 100) / 100}:1`;
 }
 
+/**
+ * The original post link, unless it merely repeats the creator's account link.
+ * Cards and previews use this so an account is never presented as a source.
+ */
+export function originalVideoUrl(video: VideoMetadata) {
+  const profileUrl = video.creator.xProfileUrl ?? video.creator.profileUrl;
+  return video.sourceUrl?.replace(/\/+$/, "") !== profileUrl?.replace(/\/+$/, "")
+    ? video.sourceUrl
+    : undefined;
+}
+
 export function formatPublishedAt(date?: string) {
   if (!date) return "—";
   return new Intl.DateTimeFormat("en-US", {

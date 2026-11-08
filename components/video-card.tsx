@@ -1,9 +1,19 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowUpRight, Check, Copy, Film } from "lucide-react";
+import { animateFavouriteSave } from "@/lib/favourite-animation";
+import { FavouriteButton } from "@/components/favourite-button";
 import { useViewportVideo } from "@/components/use-viewport-video";
-import { Film } from "lucide-react";
-import { visualSeed, type VideoMetadata } from "@/lib/videos";
+import { promptWithVideoReference } from "@/lib/video-reference";
+import {
+  originalVideoUrl,
+  visualSeed,
+  type VideoMetadata,
+} from "@/lib/videos";
+
+const CARD_ACTION_CLASS =
+  "card-action inline-flex items-center justify-center rounded-full text-zinc-800 outline-none hover:text-zinc-950 focus-visible:ring-2 focus-visible:ring-brand";
 
 const PLACEHOLDER_RATIOS = [
   4 / 5,
@@ -35,12 +45,42 @@ export function VideoCard({
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const [ratio, setRatio] = useState<number | undefined>(video.aspectRatio);
+  const [copied, setCopied] = useState(false);
+  const cancelSaveAnimation = useRef<(() => void) | null>(null);
+
+  useEffect(() => () => cancelSaveAnimation.current?.(), []);
+
+  function animateSave() {
+    cancelSaveAnimation.current?.();
+    if (cardRef.current) {
+      cancelSaveAnimation.current = animateFavouriteSave(cardRef.current);
+    }
+  }
 
   const placeholderRatio =
     PLACEHOLDER_RATIOS[visualSeed(video.id) % PLACEHOLDER_RATIOS.length];
+  const originalUrl = originalVideoUrl(video);
+
+  const copyPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(
+        promptWithVideoReference(
+          video.promptText,
+          video.id,
+          window.location.origin,
+        ),
+      );
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      // Clipboard access can be blocked; the preview still shows the prompt.
+    }
+  };
 
   return (
-    <div className={`break-inside-avoid ${className ?? "mb-3 sm:mb-4"}`}>
+    <div
+      className={`group/card relative break-inside-avoid ${className ?? "mb-3 sm:mb-4"}`}
+    >
       <button
         ref={cardRef}
         type="button"
@@ -82,6 +122,50 @@ export function VideoCard({
           </span>
         )}
       </button>
+
+      {/* Hover actions float above the card; keyboard focus reveals them too. */}
+      <div className="pointer-events-none absolute right-2 top-2 z-10 flex items-center gap-1 opacity-0 transition-opacity duration-150 focus-within:pointer-events-auto focus-within:opacity-100 group-hover/card:pointer-events-auto group-hover/card:opacity-100 max-sm:pointer-events-auto max-sm:opacity-100 motion-reduce:transition-none">
+        {originalUrl && (
+          <a
+            href={originalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Open original for ${video.title}`}
+            title="View original"
+            className={CARD_ACTION_CLASS}
+          >
+            <ArrowUpRight
+              className="h-3 w-3"
+              strokeWidth={1.9}
+              aria-hidden="true"
+            />
+          </a>
+        )}
+
+        <button
+          type="button"
+          onClick={copyPrompt}
+          aria-label={
+            copied ? "Prompt copied" : `Copy prompt for ${video.title}`
+          }
+          title={copied ? "Prompt copied" : "Copy prompt"}
+          className={CARD_ACTION_CLASS}
+        >
+          {copied ? (
+            <Check className="h-3 w-3" strokeWidth={2} aria-hidden="true" />
+          ) : (
+            <Copy className="h-3 w-3" strokeWidth={1.9} aria-hidden="true" />
+          )}
+        </button>
+
+        <FavouriteButton
+          compact
+          variant="overlay"
+          onSaveComplete={animateSave}
+          videoId={video.id}
+          videoTitle={video.title}
+        />
+      </div>
     </div>
   );
 }

@@ -73,7 +73,7 @@ Eizoki organizes work across distinct, evolving creative disciplines:
 - **Dedicated Video Detail Modals / Pages:** Deep-dive into creator credits, toolchains used (e.g., Sora, Runway Gen-3, Kling, Luma Dream Machine, Midjourney, ComfyUI), and prompt data.
 - **Copyable Prompts & Parameters:** Clean UI for copying prompts with one click.
 - **Style & Workflow Tagging:** Filter by aesthetic, pacing, aspect ratio, camera technique, and underlying model.
-- **Personal Collections / Bookmarking:** (Roadmap) Save and organize creative references.
+- **Personal Collections / Bookmarking:** Save any public motion to a private, account-backed favourites shelf.
 
 ---
 
@@ -193,6 +193,12 @@ API routes:
 - `GET /api/videos` — public catalogue. Returns only `APPROVED` videos whose
   `publishedAt` is set and not in the future. Supports `category`, `limit` (1–48,
   default 24), and the opaque `cursor` from the previous page.
+- `GET /api/favourites` — requires a Clerk session and returns the signed-in
+  user's saved public videos plus `favouritedAt`, newest save first.
+- `GET /api/videos/[id]/favourite` — reports `{ "favourited": boolean }` for the
+  signed-in user; signed-out visitors get `false`.
+- `PUT /api/videos/[id]/favourite` / `DELETE` — idempotently save or remove the
+  unique bookmark for the signed-in user.
 
 ### Video submission foundation
 
@@ -360,6 +366,25 @@ returns `204` and refreshes the affected list. No schema migration is required.
 Run `bunx playwright test tests/e2e/my-videos.spec.ts` for the private-management UI
 checks. They use temporary Clerk accounts and mocked data/deletion endpoints;
 no real upload records or ImageKit assets are deleted.
+
+### Favourites
+
+`Favourite` stores a private bookmark as a unique `(userId, videoId)` pair, so one
+account can save a video at most once. Deleting either the user or the video
+cascades to the bookmark. The user-scoped `(userId, createdAt, id)` index keeps
+each shelf keyset-paginated by save time rather than publication time.
+
+The preview reads the current state through
+`GET /api/videos/[id]/favourite` and writes with an idempotent `PUT`/`DELETE`.
+Signed-out visitors are shown the login modal instead. `/favourites` asks them to
+sign in; signed-in users get a masonry shelf with save dates, paging, and a
+heart control on each card. A toggle dispatches `eizoki:favourites-changed`, so
+the shelf drops a video immediately when it is removed from its preview.
+
+Only `APPROVED`, published videos can be saved, and the list repeats that filter,
+so a later rejection removes the entry from every shelf without deleting the
+bookmark row. Apply the favourites table migration with `bun run db:deploy`
+before using the feature against an existing database.
 
 ### Submission overlay
 

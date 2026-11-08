@@ -66,16 +66,16 @@ export function SubmissionDialog({ onClose }: { onClose: () => void }) {
         event.preventDefault();
         if (!submission.isSubmitting) onClose();
       }}
-      className="submission-dialog fixed inset-x-0 top-[53px] bottom-0 m-0 h-[calc(100dvh-53px)] max-h-none w-full max-w-none overflow-y-auto overscroll-contain border-0 bg-white/80 p-0 text-zinc-900 backdrop-blur-[6px] outline-none backdrop:bg-transparent"
+      className="submission-dialog fixed inset-x-0 top-[53px] bottom-0 m-0 h-[calc(100dvh-53px)] max-h-none w-full max-w-none overflow-y-auto overscroll-contain border-0 bg-white/80 p-0 text-zinc-900 backdrop-blur-[6px] outline-none backdrop:bg-transparent lg:overflow-hidden"
     >
       <div
-        className="submission-dialog-content mx-auto flex min-h-full w-full max-w-[1100px] flex-col px-4 py-6 sm:px-8 sm:py-8 lg:px-10"
+        className="submission-dialog-content mx-auto flex min-h-full w-full max-w-[1100px] flex-col px-4 py-6 sm:px-8 sm:py-8 lg:h-full lg:min-h-0 lg:overflow-hidden lg:px-10"
         onClick={(event) => {
           if (event.target === event.currentTarget && !submission.isSubmitting)
             onClose();
         }}
       >
-        <header className="mb-7 flex items-start justify-between gap-4 sm:mb-9">
+        <header className="mb-7 flex shrink-0 items-start justify-between gap-4 sm:mb-9">
           <div>
             <h2
               id={titleId}
@@ -134,7 +134,7 @@ export function SubmissionDialog({ onClose }: { onClose: () => void }) {
         ) : (
           <form
             onSubmit={submission.submit}
-            className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)] lg:gap-12"
+            className="grid items-start gap-7 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)] lg:grid-rows-[minmax(0,1fr)] lg:items-center lg:gap-12"
           >
             <VideoUpload
               selection={submission.selection}
@@ -143,7 +143,7 @@ export function SubmissionDialog({ onClose }: { onClose: () => void }) {
               disabled={submission.isSubmitting}
               onChoose={submission.chooseFile}
             />
-            <div className="min-w-0 rounded-[20px] border border-zinc-200/70 bg-white p-5 shadow-[0_2px_12px_-6px_rgba(9,9,11,0.08)] sm:p-6">
+            <div className="min-w-0 rounded-[20px] border border-zinc-200/70 bg-white p-5 shadow-[0_2px_12px_-6px_rgba(9,9,11,0.08)] sm:p-6 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain">
               <fieldset
                 disabled={submission.isSubmitting}
                 className="space-y-5"
