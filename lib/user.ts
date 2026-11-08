@@ -7,6 +7,7 @@ export type ApiUser = {
   lastName: string | null;
   username: string | null;
   avatar: UserAvatar;
+  isAdmin: boolean;
   createdAt: string;
   updatedAt: string;
 };

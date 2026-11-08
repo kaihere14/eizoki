@@ -13,7 +13,8 @@ export interface CreatorProfile {
   name: string;
   handle?: string;
   avatarUrl?: string;
-  profileUrl: string;
+  profileUrl?: string;
+  xProfileUrl?: string;
   platform?: "x" | "instagram" | "youtube" | "vimeo" | "portfolio" | "other";
 }
 
@@ -25,15 +26,16 @@ export interface VideoMetadata {
   category: VideoCategory;
   tags: string[];
 
-  // Media assets. Empty until the real media layer is wired to the backend.
+  // Media assets. Thumbnails and aspect ratio are optional because the feed
+  // loads the video itself and the browser reports its intrinsic dimensions.
   videoUrl: string;
   previewUrl?: string;
-  thumbnailUrl: string;
-  aspectRatio: number;
+  thumbnailUrl?: string;
+  aspectRatio?: number;
   durationSeconds?: number;
 
   creator: CreatorProfile;
-  sourceUrl: string;
+  sourceUrl?: string;
 
   promptStatus: PromptStatus;
   promptText?: string;
@@ -42,7 +44,7 @@ export interface VideoMetadata {
 
   curatorNotes?: string;
   isFeatured?: boolean;
-  publishedAt: string;
+  publishedAt?: string;
 }
 
 export const CATEGORY_LABELS: Record<VideoCategory, string> = {
@@ -81,7 +83,8 @@ export function formatDuration(seconds?: number) {
   return `${minutes}:${rest.toString().padStart(2, "0")}`;
 }
 
-export function formatAspectRatio(ratio: number) {
+export function formatAspectRatio(ratio?: number) {
+  if (!ratio) return "—";
   if (Math.abs(ratio - 16 / 9) < 0.02) return "16:9";
   if (Math.abs(ratio - 4 / 5) < 0.02) return "4:5";
   if (Math.abs(ratio - 1) < 0.02) return "1:1";
@@ -92,7 +95,8 @@ export function formatAspectRatio(ratio: number) {
   return `${Math.round(ratio * 100) / 100}:1`;
 }
 
-export function formatPublishedAt(date: string) {
+export function formatPublishedAt(date?: string) {
+  if (!date) return "—";
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",

@@ -13,29 +13,40 @@ const SKELETON_CARDS = [
   { ratio: "5 / 6" },
 ] as const;
 
-export function SkeletonFeed() {
+export function SkeletonFeed({ spacious = false }: { spacious?: boolean }) {
   return (
     <div
       aria-hidden="true"
-      className="columns-2 lg:columns-3 xl:columns-4 gap-3 sm:gap-4"
+      className={
+        spacious
+          ? "columns-1 gap-5 sm:columns-2 sm:gap-6 xl:columns-3"
+          : "columns-2 lg:columns-3 xl:columns-4 gap-3 sm:gap-4"
+      }
     >
       {SKELETON_CARDS.map((card, index) => (
-        <div key={index} className="mb-3 sm:mb-4 break-inside-avoid">
-          <div className="rounded-xl border border-zinc-200/70 bg-white p-1.5 shadow-[0_1px_2px_rgba(9,9,11,0.04)]">
+        <div
+          key={index}
+          className={`break-inside-avoid ${spacious ? "mb-5 sm:mb-6" : "mb-3 sm:mb-4"}`}
+        >
+          <div
+            className={`rounded-xl border border-zinc-200/70 bg-white shadow-[0_1px_2px_rgba(9,9,11,0.04)] ${spacious ? "overflow-hidden" : "p-1.5"}`}
+          >
             {/* Video thumbnail placeholder */}
             <div
-              className="skeleton-shimmer w-full rounded-lg"
+              className={`skeleton-shimmer w-full ${spacious ? "" : "rounded-lg"}`}
               style={{ aspectRatio: card.ratio }}
             />
 
             {/* Title + creator meta placeholder */}
-            <div className="px-1.5 pt-2.5 pb-1.5">
-              <div className="skeleton-shimmer h-2.5 w-3/4 rounded-full" />
-              <div className="mt-2 flex items-center gap-2">
-                <div className="skeleton-shimmer h-4 w-4 shrink-0 rounded-full" />
-                <div className="skeleton-shimmer h-2 w-1/3 rounded-full" />
+            {!spacious && (
+              <div className="px-1.5 pt-2.5 pb-1.5">
+                <div className="skeleton-shimmer h-2.5 w-3/4 rounded-full" />
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="skeleton-shimmer h-4 w-4 shrink-0 rounded-full" />
+                  <div className="skeleton-shimmer h-2 w-1/3 rounded-full" />
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       ))}

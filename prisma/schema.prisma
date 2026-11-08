@@ -29,8 +29,84 @@ model User {
   lastName  String?
   username  String?
   avatar    Avatar   @default(BOY)
+  /// Managed by trusted server/database operations, never self-service profile updates.
+  isAdmin   Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  submittedVideos Video[] @relation("VideoSubmitter")
+  reviewedVideos  Video[] @relation("VideoReviewer")
+
   @@map("users")
+}
+
+enum VideoReviewStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+
+  @@map("video_review_status")
+}
+
+enum VideoPromptStatus {
+  ORIGINAL
+  RECONSTRUCTED
+  UNAVAILABLE
+
+  @@map("video_prompt_status")
+}
+
+/// One catalog entry for both admin-curated and community-submitted videos.
+/// Created only after ImageKit confirms upload. Public reads require APPROVED
+/// and a publishedAt no later than the current time.
+model Video {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String?
+  /// Stable category slug; categories can grow without a database enum migration.
+  category    String
+  tags        String[] @default([])
+  isFeatured  Boolean  @default(false)
+
+  submittedById String
+  submittedBy   User   @relation("VideoSubmitter", fields: [submittedById], references: [id], onDelete: Restrict)
+
+  /// Attribution is independent of the submitter and does not require an account.
+  creatorName       String
+  creatorUsername   String?
+  creatorXUrl       String?
+  creatorProfileUrl String?
+  sourceUrl         String?
+
+  /// Store the original asset. Derive preview transformations at delivery time.
+  videoUrl        String
+  imagekitFileId  String @unique
+  durationSeconds Float?
+
+  /// Keep the prompt verbatim; append our stable video reference URL on copy.
+  promptStatus   VideoPromptStatus @default(UNAVAILABLE)
+  promptText     String?
+  negativePrompt String?
+  toolsUsed      String[]          @default([])
+  curatorNotes   String?
+
+  /// The submission service will approve admin submissions using User.isAdmin.
+  /// A safe database default keeps ordinary submissions out of the public feed.
+  reviewStatus VideoReviewStatus @default(PENDING_REVIEW)
+  reviewedById String?
+  reviewedBy   User?             @relation("VideoReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt   DateTime?
+  reviewNotes  String?
+  publishedAt  DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([reviewStatus, createdAt, id])
+  @@index([reviewStatus, publishedAt, id])
+  @@index([submittedById, createdAt, id])
+  @@index([reviewedById])
+  @@index([category, publishedAt, id])
+  @@index([tags], type: Gin)
+  @@map("videos")
 }

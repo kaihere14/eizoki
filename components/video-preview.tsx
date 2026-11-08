@@ -1,10 +1,16 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
-import { ArrowUpRight, Check, Copy } from "lucide-react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import Image from "next/image";
+import { AVATAR_IMAGES } from "@/lib/user";
+import { useViewportVideo } from "@/components/use-viewport-video";
+import {
+  promptWithVideoReference,
+  videoReferencePath,
+} from "@/lib/video-reference";
+import { ArrowUpRight, Check, Copy, Film } from "lucide-react";
 import {
   CATEGORY_LABELS,
-  CURATED_VIDEOS,
   formatAspectRatio,
   formatDuration,
   formatPublishedAt,
@@ -14,10 +20,123 @@ import {
 
 interface VideoPreviewProps {
   video: VideoMetadata;
+  similar?: VideoMetadata[];
+  onSelect?: (video: VideoMetadata) => void;
   onClose: () => void;
 }
 
-const PROMPT_STATUS: Record<PromptStatus, { label: string; className: string }> = {
+function PreviewMedia({
+  video,
+  ratio,
+  onRatioChange,
+}: {
+  video: VideoMetadata;
+  ratio?: number;
+  onRatioChange: (ratio: number) => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const effectiveRatio = ratio ?? 4 / 5;
+
+  // Opening a preview is a user gesture, so the player can start with sound.
+  // If the browser still blocks it, the native controls remain available.
+  useEffect(() => {
+    const element = videoRef.current;
+    if (!element) return;
+    element.muted = false;
+    element.volume = 1;
+    element.play().catch(() => {
+      // Autoplay with sound can still be blocked by strict browser policies.
+    });
+  }, [video.id]);
+
+  return (
+    <div
+      onClick={(event) => event.stopPropagation()}
+      style={
+        {
+          aspectRatio: effectiveRatio,
+          maxWidth: `calc((100dvh - 96px) * ${effectiveRatio})`,
+        } as CSSProperties
+      }
+      className={`relative w-full overflow-hidden rounded-2xl border border-zinc-200/70 shadow-[0_24px_80px_-36px_rgba(9,9,11,0.35)] ${ready || failed ? "bg-zinc-100" : "skeleton-shimmer"}`}
+    >
+      <video
+        ref={videoRef}
+        key={video.id}
+        src={video.videoUrl}
+        controls
+        autoPlay
+        loop
+        playsInline
+        preload="auto"
+        aria-label={`${video.title} by ${video.creator.name}`}
+        onLoadedMetadata={(event) => {
+          const element = event.currentTarget;
+          if (element.videoWidth && element.videoHeight) {
+            onRatioChange(element.videoWidth / element.videoHeight);
+          }
+        }}
+        onLoadedData={() => setReady(true)}
+        onError={() => setFailed(true)}
+        className={`h-full w-full bg-zinc-950 object-contain transition-opacity duration-300 ${
+          ready ? "opacity-100" : "opacity-0"
+        }`}
+      />
+
+      {failed && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-zinc-100 text-zinc-500">
+          <Film className="h-7 w-7" strokeWidth={1.4} aria-hidden="true" />
+          <p className="text-[12px]">This video could not be played.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MiniVideo({ video }: { video: VideoMetadata }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { videoRef, shouldLoad } = useViewportVideo(containerRef);
+  const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  return (
+    <div
+      ref={containerRef}
+      className={`relative overflow-hidden rounded-lg border border-zinc-200/60 bg-zinc-100 ${ready || failed ? "" : "skeleton-shimmer"}`}
+      style={{ aspectRatio: 4 / 3 }}
+    >
+      {shouldLoad && (
+        <video
+          ref={videoRef}
+          src={video.videoUrl}
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          aria-hidden="true"
+          tabIndex={-1}
+          onLoadedData={() => setReady(true)}
+          onError={() => setFailed(true)}
+          className={`h-full w-full object-cover transition-opacity duration-300 ${
+            ready ? "opacity-100" : "opacity-0"
+          }`}
+        />
+      )}
+      {failed && (
+        <span className="absolute inset-0 flex items-center justify-center text-zinc-400">
+          <Film className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+        </span>
+      )}
+    </div>
+  );
+}
+
+const PROMPT_STATUS: Record<
+  PromptStatus,
+  { label: string; className: string }
+> = {
   original: {
     label: "Original",
     className: "border-emerald-200/80 bg-emerald-50 text-emerald-700",
@@ -41,17 +160,16 @@ const PLATFORM_LABELS: Record<string, string> = {
   other: "Profile",
 };
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
-
-export function VideoPreview({ video, onClose }: VideoPreviewProps) {
+export function VideoPreview({
+  video,
+  similar = [],
+  onSelect,
+  onClose,
+}: VideoPreviewProps) {
   const [copied, setCopied] = useState(false);
+  const [mediaRatio, setMediaRatio] = useState<number | undefined>(
+    video.aspectRatio,
+  );
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -62,7 +180,8 @@ export function VideoPreview({ video, onClose }: VideoPreviewProps) {
 
     const previousOverflow = document.body.style.overflow;
     const previousPaddingRight = document.body.style.paddingRight;
-    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    const scrollbarWidth =
+      window.innerWidth - document.documentElement.clientWidth;
 
     document.body.style.overflow = "hidden";
     if (scrollbarWidth > 0) {
@@ -77,10 +196,14 @@ export function VideoPreview({ video, onClose }: VideoPreviewProps) {
   }, [onClose]);
 
   const copyPrompt = async () => {
-    if (!video.promptText) return;
-
     try {
-      await navigator.clipboard.writeText(video.promptText);
+      await navigator.clipboard.writeText(
+        promptWithVideoReference(
+          video.promptText,
+          video.id,
+          window.location.origin,
+        ),
+      );
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1600);
     } catch {
@@ -89,15 +212,57 @@ export function VideoPreview({ video, onClose }: VideoPreviewProps) {
   };
 
   const status = PROMPT_STATUS[video.promptStatus];
-  const platformLabel = PLATFORM_LABELS[video.creator.platform ?? "other"] ?? "Profile";
-  const profileAction =
-    video.creator.platform === "portfolio" || video.creator.platform === "other" || !video.creator.platform
+  const hasPrompt = Boolean(video.promptText?.trim());
+  const profileUrl = video.creator.xProfileUrl ?? video.creator.profileUrl;
+  const isXProfile =
+    Boolean(video.creator.xProfileUrl) || video.creator.platform === "x";
+  const platformLabel = isXProfile
+    ? "X"
+    : (PLATFORM_LABELS[video.creator.platform ?? "other"] ?? "Profile");
+  const profileAction = isXProfile
+    ? "Open on X"
+    : video.creator.platform === "portfolio" ||
+        video.creator.platform === "other" ||
+        !video.creator.platform
       ? "Visit profile"
       : `Open on ${platformLabel}`;
+  // An account link is not an original-post link, even if supplied twice.
+  const originalUrl =
+    video.sourceUrl?.replace(/\/+$/, "") !== profileUrl?.replace(/\/+$/, "")
+      ? video.sourceUrl
+      : undefined;
 
-  const similar = CURATED_VIDEOS.filter((item) => item.id !== video.id)
-    .sort((a, b) => Number(b.category === video.category) - Number(a.category === video.category))
+  const related = similar
+    .filter((item) => item.id !== video.id)
+    .sort(
+      (a, b) =>
+        Number(b.category === video.category) -
+        Number(a.category === video.category),
+    )
     .slice(0, 4);
+
+  const creatorDetails = (
+    <>
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_2px_rgba(9,9,11,0.04)]">
+        <Image
+          src={video.creator.avatarUrl ?? AVATAR_IMAGES.BOY}
+          alt="Uploader avatar"
+          width={36}
+          height={36}
+          sizes="36px"
+          className="h-9 w-9 object-contain"
+        />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13px] font-medium text-zinc-900">
+          {video.creator.name}
+        </span>
+        <span className="block truncate text-[11px] text-zinc-500">
+          Creator
+        </span>
+      </span>
+    </>
+  );
 
   return (
     <div
@@ -118,15 +283,10 @@ export function VideoPreview({ video, onClose }: VideoPreviewProps) {
       >
         {/* Centered in the space between the viewport edge and the sidebar */}
         <div className="flex flex-1 items-center justify-center px-4 pt-4 pb-3 sm:px-6 sm:pt-6 lg:px-6 lg:py-0 xl:px-8">
-          <div
-            onClick={(event) => event.stopPropagation()}
-            style={
-              {
-                aspectRatio: video.aspectRatio,
-                maxWidth: `calc((100dvh - 96px) * ${video.aspectRatio})`,
-              } as CSSProperties
-            }
-            className="skeleton-shimmer relative w-full overflow-hidden rounded-2xl border border-zinc-200/70 shadow-[0_24px_80px_-36px_rgba(9,9,11,0.35)]"
+          <PreviewMedia
+            video={video}
+            ratio={mediaRatio}
+            onRatioChange={setMediaRatio}
           />
         </div>
 
@@ -146,74 +306,58 @@ export function VideoPreview({ video, onClose }: VideoPreviewProps) {
             )}
 
             <div className="mt-5 space-y-2">
-              <a
-                href={video.creator.profileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex items-center gap-3 rounded-2xl border border-zinc-200/60 bg-white p-2.5 shadow-[0_1px_2px_rgba(9,9,11,0.04)] transition-colors duration-150 hover:bg-white"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-[10.5px] font-semibold tracking-wide text-white">
-                  {initials(video.creator.name)}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-medium text-zinc-900">
-                    {video.creator.name}
-                  </span>
-                  <span className="block truncate text-[11px] text-zinc-500">
-                    {video.creator.handle ?? platformLabel}
-                  </span>
-                </span>
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900 text-white transition-transform duration-150 group-hover:scale-105">
-                  <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} />
-                </span>
-              </a>
+              <div className="flex items-center gap-3 rounded-2xl border border-zinc-200/60 bg-white p-2.5 shadow-[0_1px_2px_rgba(9,9,11,0.04)]">
+                {creatorDetails}
+              </div>
 
-              <a
-                href={video.creator.profileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between rounded-full border border-zinc-200/60 bg-white px-4 py-2.5 text-[12.5px] font-medium text-zinc-700 shadow-[0_1px_2px_rgba(9,9,11,0.04)] transition-colors duration-150 hover:bg-white hover:text-zinc-950"
-              >
-                {profileAction}
-                <ArrowUpRight className="h-3.5 w-3.5 text-zinc-400" strokeWidth={1.9} />
-              </a>
+              {profileUrl && (
+                <a
+                  href={profileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between rounded-full border border-zinc-200/60 bg-white px-4 py-2.5 text-[12.5px] font-medium text-zinc-700 shadow-[0_1px_2px_rgba(9,9,11,0.04)] transition-colors duration-150 hover:bg-white hover:text-zinc-950"
+                >
+                  <span>{profileAction}</span>
+                  <span className="flex min-w-0 items-center gap-2">
+                    {isXProfile && video.creator.handle && (
+                      <span className="max-w-36 truncate text-[11.5px] text-zinc-500">
+                        {video.creator.handle}
+                      </span>
+                    )}
+                    <ArrowUpRight
+                      className="h-3.5 w-3.5 text-zinc-400"
+                      strokeWidth={1.9}
+                    />
+                  </span>
+                </a>
+              )}
             </div>
 
             <div className="mt-3 space-y-2">
-              {video.promptText ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={copyPrompt}
-                    className="flex w-full items-center justify-between rounded-full border border-white/20 bg-brand px-4 py-2.5 text-[13px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_2px_4px_var(--brand-shadow)] transition-[background-color,transform] duration-150 hover:bg-brand-600 active:scale-[0.99]"
-                  >
-                    {copied ? "Prompt copied" : "Copy prompt"}
-                    {copied ? (
-                      <Check className="h-4 w-4" strokeWidth={2.2} />
-                    ) : (
-                      <Copy className="h-4 w-4" strokeWidth={1.9} />
-                    )}
-                  </button>
-
-                  <a
-                    href={video.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between rounded-full border border-zinc-200/60 bg-white px-4 py-2.5 text-[12.5px] font-medium text-zinc-700 shadow-[0_1px_2px_rgba(9,9,11,0.04)] transition-colors duration-150 hover:bg-white hover:text-zinc-950"
-                  >
-                    View original
-                    <ArrowUpRight className="h-3.5 w-3.5 text-zinc-400" strokeWidth={1.9} />
-                  </a>
-                </>
-              ) : (
+              <button
+                type="button"
+                onClick={copyPrompt}
+                className="flex w-full items-center justify-between rounded-full border border-white/20 bg-[#d6336c] px-4 py-2.5 text-[13px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_2px_4px_rgba(214,51,108,0.3)] outline-none transition-[background-color,transform] duration-150 hover:bg-[#bf2560] focus-visible:ring-2 focus-visible:ring-[#d6336c] focus-visible:ring-offset-2 motion-safe:active:scale-[0.99]"
+              >
+                {copied ? "Prompt copied" : "Copy prompt"}
+                {copied ? (
+                  <Check className="h-4 w-4" strokeWidth={2.2} />
+                ) : (
+                  <Copy className="h-4 w-4" strokeWidth={1.9} />
+                )}
+              </button>
+              {originalUrl && (
                 <a
-                  href={video.sourceUrl}
+                  href={originalUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex w-full items-center justify-between rounded-full border border-white/20 bg-brand px-4 py-2.5 text-[13px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_2px_4px_var(--brand-shadow)] transition-colors duration-150 hover:bg-brand-600"
+                  className="flex items-center justify-between rounded-full border border-zinc-200/60 bg-white px-4 py-2.5 text-[12.5px] font-medium text-zinc-700 shadow-[0_1px_2px_rgba(9,9,11,0.04)] transition-colors duration-150 hover:bg-white hover:text-zinc-950"
                 >
                   View original
-                  <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={1.9} />
+                  <ArrowUpRight
+                    className="h-3.5 w-3.5 text-zinc-400"
+                    strokeWidth={1.9}
+                  />
                 </a>
               )}
             </div>
@@ -222,15 +366,23 @@ export function VideoPreview({ video, onClose }: VideoPreviewProps) {
               {[
                 { label: "Category", value: CATEGORY_LABELS[video.category] },
                 { label: "Tools", value: video.toolsUsed?.join(", ") ?? "—" },
-                { label: "Aspect", value: formatAspectRatio(video.aspectRatio) },
-                { label: "Duration", value: formatDuration(video.durationSeconds) },
-                { label: "Published", value: formatPublishedAt(video.publishedAt) },
+                { label: "Aspect", value: formatAspectRatio(mediaRatio) },
+                {
+                  label: "Duration",
+                  value: formatDuration(video.durationSeconds),
+                },
+                {
+                  label: "Published",
+                  value: formatPublishedAt(video.publishedAt),
+                },
               ].map((row) => (
                 <div
                   key={row.label}
                   className="flex items-start justify-between gap-5 border-b border-dashed border-zinc-300/70 py-2.5"
                 >
-                  <dt className="shrink-0 text-[12.5px] text-zinc-500">{row.label}</dt>
+                  <dt className="shrink-0 text-[12.5px] text-zinc-500">
+                    {row.label}
+                  </dt>
                   <dd className="max-w-[62%] text-right text-[12.5px] font-medium leading-relaxed text-zinc-800">
                     {row.value}
                   </dd>
@@ -251,9 +403,24 @@ export function VideoPreview({ video, onClose }: VideoPreviewProps) {
               </div>
 
               <div className="mt-2 rounded-2xl border border-zinc-200/60 bg-white p-3.5">
-                <p className="text-[12.5px] leading-relaxed text-zinc-600">
-                  {video.promptText ??
-                    "The creator has not shared a prompt for this piece."}
+                {hasPrompt && (
+                  <p className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-zinc-600">
+                    {video.promptText}
+                  </p>
+                )}
+                <p
+                  className={`${hasPrompt ? "mt-3 border-t border-zinc-100 pt-3 " : ""}text-[12px] leading-relaxed text-zinc-500`}
+                >
+                  Please use this video as the reference:
+                  <br />
+                  <a
+                    href={videoReferencePath(video.id)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-brand underline decoration-brand/30 underline-offset-2 hover:decoration-brand"
+                  >
+                    Reference video
+                  </a>
                 </p>
               </div>
               {video.negativePrompt && (
@@ -272,9 +439,9 @@ export function VideoPreview({ video, onClose }: VideoPreviewProps) {
                 {video.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="rounded-full border border-zinc-200/50 bg-white px-2 py-1 text-[10.5px] font-medium text-zinc-500"
+                    className="rounded-full border border-white bg-[linear-gradient(180deg,#fafafa_0%,#f4f4f5_100%)] px-2.5 py-1 text-[10.5px] font-medium text-zinc-600 shadow-[inset_0_1px_0_#ffffff,inset_0_-1px_1px_rgba(0,0,0,0.05),0_1px_1px_rgba(9,9,11,0.05),0_3px_8px_-3px_rgba(9,9,11,0.10)]"
                   >
-                    #{tag}
+                    {tag}
                   </span>
                 ))}
               </div>
@@ -291,24 +458,29 @@ export function VideoPreview({ video, onClose }: VideoPreviewProps) {
               </section>
             )}
 
-            <section className="mt-4 rounded-2xl border border-zinc-200/60 bg-white p-3">
-              <h3 className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-                Similar motions
-              </h3>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {similar.map((item) => (
-                  <div key={item.id}>
-                    <div
-                      className="skeleton-shimmer relative overflow-hidden rounded-lg border border-zinc-200/60"
-                      style={{ aspectRatio: 4 / 3 }}
-                    />
-                    <p className="mt-1 truncate text-[10.5px] font-medium text-zinc-700">
-                      {item.title}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </section>
+            {related.length > 0 && (
+              <section className="mt-4 rounded-2xl border border-zinc-200/60 bg-white p-3">
+                <h3 className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+                  Similar motions
+                </h3>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {related.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => onSelect?.(item)}
+                      disabled={!onSelect}
+                      className="group text-left outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    >
+                      <MiniVideo video={item} />
+                      <p className="mt-1 truncate text-[10.5px] font-medium text-zinc-700 group-hover:text-zinc-950">
+                        {item.title}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
 
             <p className="mt-6 text-[10.5px] text-zinc-400">
               Curated by Eizoki — every piece is credited to its creator.

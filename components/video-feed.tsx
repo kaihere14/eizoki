@@ -1,47 +1,190 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Film, LoaderCircle, RefreshCw } from "lucide-react";
+import { SkeletonFeed } from "@/components/skeleton-feed";
+import { VideoCard } from "@/components/video-card";
 import { VideoPreview } from "@/components/video-preview";
-import { CURATED_VIDEOS, type VideoMetadata } from "@/lib/videos";
+import { fetchVideoFeed } from "@/lib/video-feed";
+import type { VideoMetadata } from "@/lib/videos";
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+type FeedStatus = "loading" | "ready" | "error";
+
+function mergeVideos(current: VideoMetadata[], incoming: VideoMetadata[]) {
+  const seen = new Set(current.map((video) => video.id));
+  return [...current, ...incoming.filter((video) => !seen.has(video.id))];
 }
 
 export function VideoFeed() {
+  const [videos, setVideos] = useState<VideoMetadata[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [status, setStatus] = useState<FeedStatus>("loading");
+  const [error, setError] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [selected, setSelected] = useState<VideoMetadata | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetchVideoFeed({ signal: controller.signal })
+      .then((page) => {
+        setVideos(page.videos);
+        setNextCursor(page.nextCursor);
+        setStatus("ready");
+      })
+      .catch((cause: unknown) => {
+        if (controller.signal.aborted) return;
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "The videos could not be loaded. Please try again.",
+        );
+        setStatus("error");
+      });
+
+    return () => controller.abort();
+  }, [refreshToken]);
+
+  // A successful submission asks the feed to pick up the new record.
+  useEffect(() => {
+    const refresh = () => setRefreshToken((token) => token + 1);
+    window.addEventListener("eizoki:videos-changed", refresh);
+    return () => window.removeEventListener("eizoki:videos-changed", refresh);
+  }, []);
+
+  function retry() {
+    setStatus("loading");
+    setError(null);
+    setRefreshToken((token) => token + 1);
+  }
+
+  async function loadMore() {
+    if (!nextCursor || isLoadingMore) return;
+    setIsLoadingMore(true);
+    setLoadMoreError(null);
+    try {
+      const page = await fetchVideoFeed({ cursor: nextCursor });
+      setVideos((current) => mergeVideos(current, page.videos));
+      setNextCursor(page.nextCursor);
+    } catch (cause) {
+      setLoadMoreError(
+        cause instanceof Error
+          ? cause.message
+          : "More videos could not be loaded.",
+      );
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }
+
+  if (status === "loading" && videos.length === 0) {
+    return <SkeletonFeed spacious />;
+  }
+
+  if (status === "error" && videos.length === 0) {
+    return (
+      <div className="mx-auto flex max-w-md flex-col items-center rounded-2xl border border-zinc-200/70 bg-white px-6 py-14 text-center shadow-[0_1px_2px_rgba(9,9,11,0.04)]">
+        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">
+          <RefreshCw className="h-5 w-5" strokeWidth={1.6} />
+        </span>
+        <p className="mt-4 text-[14px] font-medium text-zinc-800">
+          The collection could not be loaded
+        </p>
+        <p className="mt-1.5 text-[12.5px] leading-relaxed text-zinc-500">
+          {error}
+        </p>
+        <button
+          type="button"
+          onClick={retry}
+          className="mt-5 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 py-2 text-[12.5px] font-medium text-zinc-700 shadow-sm outline-none transition-colors hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-brand"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  if (videos.length === 0) {
+    return (
+      <div className="mx-auto flex max-w-md flex-col items-center rounded-2xl border border-dashed border-zinc-300 bg-white/70 px-6 py-16 text-center">
+        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-zinc-100 text-zinc-400">
+          <Film className="h-5 w-5" strokeWidth={1.5} />
+        </span>
+        <p className="mt-4 text-[14px] font-medium text-zinc-800">
+          The collection is waiting for its first piece
+        </p>
+        <p className="mt-1.5 max-w-xs text-[12.5px] leading-relaxed text-zinc-500">
+          Published submissions appear here as soon as they pass review.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <>
-      <div className="columns-2 gap-3 sm:gap-4 lg:columns-3 xl:columns-4">
-        {CURATED_VIDEOS.map((video) => (
-          <div key={video.id} className="mb-3 break-inside-avoid sm:mb-4">
-            <button
-              type="button"
-              onClick={() => setSelected(video)}
-              aria-label={`Preview ${video.title} by ${video.creator.name}`}
-              aria-haspopup="dialog"
-              style={{ aspectRatio: video.aspectRatio }}
-              className="skeleton-shimmer group relative block w-full cursor-pointer overflow-hidden rounded-xl border border-zinc-200/70 text-left shadow-[0_1px_2px_rgba(9,9,11,0.04)] transition-shadow duration-200 ease-out group-hover:shadow-[0_10px_28px_-14px_rgba(9,9,11,0.2)]"
-            >
-              <span
-                aria-hidden="true"
-                className="absolute bottom-2 left-2 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-zinc-900 text-[5px] font-semibold tracking-wide text-white ring-1 ring-white/80 shadow-[0_1px_3px_rgba(9,9,11,0.15)] sm:h-[18px] sm:w-[18px] sm:text-[6px]"
-              >
-                {initials(video.creator.name)}
-              </span>
-            </button>
-          </div>
+      {status === "error" && error && (
+        <div
+          role="status"
+          className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-[12px] text-amber-800"
+        >
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={retry}
+            className="rounded-full bg-white px-3 py-1 text-[11.5px] font-medium text-amber-800 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      <div className="columns-1 gap-5 sm:columns-2 sm:gap-6 xl:columns-3">
+        {videos.map((video) => (
+          <VideoCard
+            key={video.id}
+            video={video}
+            onOpen={setSelected}
+            paused={selected !== null}
+            className="mb-5 sm:mb-6"
+          />
         ))}
       </div>
 
+      {nextCursor && (
+        <div className="mt-6 flex flex-col items-center gap-3">
+          {loadMoreError && (
+            <p role="alert" className="text-[12px] text-red-600">
+              {loadMoreError}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={loadMore}
+            disabled={isLoadingMore}
+            className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-5 py-2.5 text-[12.5px] font-medium text-zinc-700 shadow-[0_1px_2px_rgba(9,9,11,0.04)] outline-none transition-colors hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-wait disabled:opacity-60"
+          >
+            {isLoadingMore ? (
+              <>
+                <LoaderCircle className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
+                Loading videos…
+              </>
+            ) : (
+              "Load more videos"
+            )}
+          </button>
+        </div>
+      )}
+
       {selected && (
-        <VideoPreview video={selected} onClose={() => setSelected(null)} />
+        <VideoPreview
+          key={selected.id}
+          video={selected}
+          similar={videos}
+          onSelect={setSelected}
+          onClose={() => setSelected(null)}
+        />
       )}
     </>
   );
