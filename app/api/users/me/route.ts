@@ -1,8 +1,10 @@
-import { currentUser } from "@clerk/nextjs/server";
+import { currentUser, type User as ClerkUser } from "@clerk/nextjs/server";
 import type { Avatar } from "@/lib/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { RESTRICTION_COPY } from "@/lib/account-limits";
+import { upsertAdoptingPreviousRow } from "@/lib/services/current-user";
 import { hasVideoAwaitingReview } from "@/lib/services/upload-limits";
+import { isUniqueViolation } from "@/lib/prisma-errors";
 
 const AVATARS: Avatar[] = ["GIRL", "BOY"];
 
@@ -39,23 +41,26 @@ async function loadClerkProfile() {
     username: clerkUser.username,
   };
 
-  return { clerkId: clerkUser.id, profile };
+  return { clerkUser, profile };
 }
 
 /** Creates the row on first sight, then keeps it in sync with Clerk. */
 async function upsertUser(
-  clerkId: string,
+  clerkUser: ClerkUser,
   profile: ClerkProfile,
   avatar?: Avatar,
 ) {
   const changes = avatar ? { ...profile, avatar } : profile;
 
   try {
-    const user = await prisma.user.upsert({
-      where: { clerkId },
-      create: { clerkId, ...changes },
-      update: changes,
-    });
+    const clerkId = clerkUser.id;
+    const user = await upsertAdoptingPreviousRow(clerkUser, () =>
+      prisma.user.upsert({
+        where: { clerkId },
+        create: { clerkId, ...changes },
+        update: changes,
+      }),
+    );
 
     // The client signs a suspended account out as soon as it sees this.
     if (user.banned) {
@@ -70,12 +75,7 @@ async function upsertUser(
       !user.isAdmin && (await hasVideoAwaitingReview(user.id));
     return Response.json({ user: { ...user, hasPendingVideo } });
   } catch (error) {
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      error.code === "P2002"
-    ) {
+    if (isUniqueViolation(error)) {
       return Response.json(
         { error: "This email address is already linked to another account." },
         { status: 409 },
@@ -95,7 +95,7 @@ export async function GET() {
 
   if (result instanceof Response) return result;
 
-  return upsertUser(result.clerkId, result.profile);
+  return upsertUser(result.clerkUser, result.profile);
 }
 
 /** Updates the fields a user may change themselves — currently the avatar. */
@@ -117,5 +117,5 @@ export async function PATCH(request: Request) {
     );
   }
 
-  return upsertUser(result.clerkId, result.profile, avatar as Avatar);
+  return upsertUser(result.clerkUser, result.profile, avatar as Avatar);
 }
