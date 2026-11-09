@@ -106,7 +106,7 @@ export function DeleteVideoDialog({
           type="button"
           disabled={busy}
           onClick={remove}
-          className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-red-600 px-4 py-2 text-[12.5px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_2px_4px_rgba(220,38,38,0.15)] outline-none hover:bg-red-700 focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-red-600 px-4 py-2 text-[12.5px] font-medium text-on-brand shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_2px_4px_rgba(220,38,38,0.15)] outline-none hover:bg-red-700 focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:opacity-60"
         >
           {busy && (
             <LoaderCircle className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />

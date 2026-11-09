@@ -24,7 +24,7 @@ export function animateFavouriteSave(card: HTMLElement): () => void {
     position: "fixed", left: `${source.left}px`, top: `${source.top}px`,
     width: `${source.width}px`, height: `${source.height}px`,
     borderRadius: "12px", overflow: "hidden", pointerEvents: "none",
-    zIndex: "1000", background: "#f4f4f5", transformOrigin: "center",
+    zIndex: "1000", background: "var(--skeleton)", transformOrigin: "center",
     boxShadow: "0 12px 32px rgb(9 9 11 / 0.2)",
   });
   const video = card.querySelector("video");

@@ -35,7 +35,7 @@ export function AdminTabs({
               {counts[tab.key] > 0 && (
                 <span
                   className={`min-w-[18px] rounded-full px-1.5 text-center text-[10.5px] tabular-nums leading-[18px] ${
-                    current ? "bg-brand text-white" : "bg-zinc-200 text-zinc-600"
+                    current ? "bg-brand text-on-brand" : "bg-zinc-200 text-zinc-600"
                   }`}
                 >
                   {counts[tab.key]}

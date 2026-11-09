@@ -66,7 +66,7 @@ export function TagPicker() {
           return (
             <span
               key={value}
-              className="inline-flex h-8 max-w-full items-center gap-1 rounded-full border border-white bg-[linear-gradient(180deg,#fafafa_0%,#f4f4f5_100%)] pl-3 pr-1 text-[12px] font-medium text-zinc-600 shadow-[inset_0_1px_0_#ffffff,inset_0_-1px_1px_rgba(0,0,0,0.05),0_1px_1px_rgba(9,9,11,0.05),0_3px_8px_-3px_rgba(9,9,11,0.10)]"
+              className="inline-flex h-8 max-w-full items-center gap-1 rounded-full border border-white bg-[linear-gradient(180deg,var(--raised-mid)_0%,var(--raised-sunken)_100%)] pl-3 pr-1 text-[12px] font-medium text-zinc-600 shadow-[inset_0_1px_0_var(--raised-highlight),inset_0_-1px_1px_rgba(0,0,0,0.05),0_1px_1px_rgba(9,9,11,0.05),0_3px_8px_-3px_rgba(9,9,11,0.10)]"
             >
               <input type="hidden" name="tags" value={value} />
               <span className="truncate">{tag.label}</span>

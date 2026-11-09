@@ -4,6 +4,8 @@ Created with the built-in ChatGPT image generation tool from the two user-suppli
 
 The male portrait is the fallback for users without an explicit avatar preference. The account menu lets users select either illustration. The choice is stored in Postgres as `users.avatar` (`BOY` or `GIRL`, defaulting to `BOY`) through `PATCH /api/users/me`; it is a cosmetic preference, not an identity or authorization field.
 
+Both illustrations have a white-ink dark-mode variation rendered with `dark:invert` on the image itself. This preserves the original linework, antialiased edges and alpha transparency without downloading a second asset. The variant follows the app's `data-mode` switch from first paint, independently of the blue/pink accent. It applies in the account trigger, account summary, avatar picker and uploader attribution; custom uploader images retain their original colors.
+
 ## Prompts
 
 ### Transparent cutouts (final assets)

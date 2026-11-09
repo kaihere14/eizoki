@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Search, Settings, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useLoginModal } from "@/components/login-modal";
@@ -53,12 +54,12 @@ export function HoverHint({
               damping: 32,
               mass: 0.6,
             }}
-            className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 whitespace-nowrap rounded-[6px] border border-zinc-200/90 bg-[linear-gradient(180deg,#ffffff_0%,#f8f8f9_100%)] px-2 py-[3px] text-[10.5px] font-medium leading-normal tracking-tight text-zinc-800 shadow-[inset_0_2px_3px_rgba(9,9,11,0.10),inset_0_1px_0_rgba(9,9,11,0.04),inset_0_-1px_1px_rgba(255,255,255,0.9),0_1px_2px_rgba(9,9,11,0.06),0_4px_14px_rgba(9,9,11,0.10)]"
+            className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 whitespace-nowrap rounded-[6px] border border-zinc-200/90 bg-[linear-gradient(180deg,var(--raised-top)_0%,var(--raised-mid)_100%)] px-2 py-[3px] text-[10.5px] font-medium leading-normal tracking-tight text-zinc-800 shadow-[inset_0_2px_3px_rgba(9,9,11,0.10),inset_0_1px_0_rgba(9,9,11,0.04),inset_0_-1px_1px_rgba(255,255,255,0.9),0_1px_2px_rgba(9,9,11,0.06),0_4px_14px_rgba(9,9,11,0.10)]"
           >
             {label}
             <span
               aria-hidden="true"
-              className="absolute -top-[3px] left-1/2 h-1.5 w-1.5 -translate-x-1/2 rotate-45 rounded-[1px] border-l border-t border-zinc-200/90 bg-[#fcfcfc]"
+              className="absolute -top-[3px] left-1/2 h-1.5 w-1.5 -translate-x-1/2 rotate-45 rounded-[1px] border-l border-t border-zinc-200/90 bg-(--raised-top)"
             />
           </motion.div>
         )}
@@ -80,7 +81,13 @@ export function Navbar({
 
   const handleLoginClick = onLoginClick ?? openLoginModal;
   const { isSignedIn, user: clerkUser } = useUser();
-  const [submissionOpen, setSubmissionOpen] = useState(false);
+  // The navbar stays usable while the submission form is open, so the form
+  // belongs to the page it was opened on: navigating elsewhere closes it.
+  const pathname = usePathname();
+  const [submissionPath, setSubmissionPath] = useState<string | null>(null);
+  const submissionOpen = submissionPath !== null && submissionPath === pathname;
+  const setSubmissionOpen = (open: boolean) =>
+    setSubmissionPath(open ? pathname : null);
   const [restriction, setRestriction] = useState<RestrictionCode | null>(null);
   const handleSubmitClick =
     onSubmitClick ??
@@ -189,7 +196,15 @@ export function Navbar({
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-zinc-200/80 select-none">
+      <header
+        onClickCapture={(event) => {
+          // A navbar link (logo, My Videos, ...) leaves the form, even when it
+          // points at the current page.
+          if ((event.target as Element).closest("a[href]"))
+            setSubmissionOpen(false);
+        }}
+        className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-zinc-200/80 select-none"
+      >
         <div className="mx-auto w-full max-w-[1440px] flex items-center justify-between h-13 px-4 sm:px-6 lg:px-8">
           {/* Left Section: Logo & Brand + Separator */}
           <div className="flex items-center h-full gap-1.5">
@@ -221,7 +236,7 @@ export function Navbar({
                 onMouseEnter={() => handleMouseEnter("text")}
                 className="relative inline-flex items-center"
               >
-                <span className="text-[14.5px] font-medium tracking-tight text-zinc-900 group-hover:text-black transition-colors duration-150">
+                <span className="text-[14.5px] font-medium tracking-tight text-zinc-900 group-hover:text-zinc-950 transition-colors duration-150">
                   eizoki
                 </span>
               </div>
@@ -305,7 +320,7 @@ export function Navbar({
                     <span className="absolute -bottom-[3px] -right-[3px] w-[5px] h-[5px] bg-white border border-brand" />
 
                     {/* Dimension Pill Badge */}
-                    <span className="absolute -bottom-4.5 left-1/2 -translate-x-1/2 bg-brand text-white text-[9px] font-mono leading-none px-1.5 py-0.5 rounded-[3px] shadow-xs whitespace-nowrap">
+                    <span className="absolute -bottom-4.5 left-1/2 -translate-x-1/2 bg-brand text-on-brand text-[9px] font-mono leading-none px-1.5 py-0.5 rounded-[3px] shadow-xs whitespace-nowrap">
                       {hoveredBrandItem === "logo" ? "24 × 24" : "48 × 16"}
                     </span>
                   </motion.div>
@@ -420,7 +435,7 @@ export function Navbar({
               type="button"
               onClick={onSearchClick}
               aria-label="Search motions and prompts"
-              className="group relative h-9 w-[112px] flex items-center justify-center gap-1.5 rounded-full cursor-pointer border border-white bg-[linear-gradient(180deg,#ffffff_0%,#fafafa_52%,#f1f1f3_100%)] text-zinc-900 shadow-[inset_0_1px_0_#ffffff,inset_0_-1px_1px_rgba(0,0,0,0.06),0_1px_1px_rgba(9,9,11,0.06),0_4px_10px_-4px_rgba(9,9,11,0.14),0_12px_26px_-14px_rgba(9,9,11,0.22)] transition-[box-shadow,border-color,color] duration-200 ease-out hover:border-white hover:shadow-[inset_0_1px_0_#ffffff,inset_0_-1px_1px_rgba(0,0,0,0.06),0_1px_1px_rgba(9,9,11,0.07),0_6px_14px_-5px_rgba(9,9,11,0.16),0_16px_32px_-16px_rgba(9,9,11,0.24)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.985] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.10),inset_0_1px_0_rgba(255,255,255,0.9),0_1px_1px_rgba(9,9,11,0.05)]"
+              className="group relative h-9 w-[112px] flex items-center justify-center gap-1.5 rounded-full cursor-pointer border border-white bg-[linear-gradient(180deg,var(--raised-top)_0%,var(--raised-mid)_52%,var(--raised-bottom)_100%)] text-zinc-900 shadow-[inset_0_1px_0_var(--raised-highlight),inset_0_-1px_1px_rgba(0,0,0,0.06),0_1px_1px_rgba(9,9,11,0.06),0_4px_10px_-4px_rgba(9,9,11,0.14),0_12px_26px_-14px_rgba(9,9,11,0.22)] transition-[box-shadow,border-color,color] duration-200 ease-out hover:border-white hover:shadow-[inset_0_1px_0_var(--raised-highlight),inset_0_-1px_1px_rgba(0,0,0,0.06),0_1px_1px_rgba(9,9,11,0.07),0_6px_14px_-5px_rgba(9,9,11,0.16),0_16px_32px_-16px_rgba(9,9,11,0.24)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.985] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.10),inset_0_1px_0_rgba(255,255,255,0.9),0_1px_1px_rgba(9,9,11,0.05)]"
             >
               <Search
                 className="w-[15px] h-[15px] text-zinc-500 shrink-0 transition-colors duration-200 group-hover:text-zinc-700"
@@ -453,7 +468,7 @@ export function Navbar({
               type="button"
               onClick={handleSubmitClick}
               aria-haspopup="dialog"
-              className="group relative inline-flex items-center justify-center px-3.5 py-1 text-[12.5px] font-medium text-white rounded-full bg-brand border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_2px_4px_var(--brand-shadow)] hover:bg-brand-600 active:scale-[0.96] transition-[background-color,transform,box-shadow] duration-150 ease-out cursor-pointer"
+              className="group relative inline-flex items-center justify-center px-3.5 py-1 text-[12.5px] font-medium text-on-brand rounded-full bg-brand border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_2px_4px_var(--brand-shadow)] hover:bg-brand-600 active:scale-[0.96] transition-[background-color,transform,box-shadow] duration-150 ease-out cursor-pointer"
             >
               <span>Submit</span>
             </button>

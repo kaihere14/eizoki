@@ -44,9 +44,11 @@ export function SubmissionDialog({
   const descriptionId = useId();
   const [leaving, setLeaving] = useState(false);
   const onCloseRef = useRef(onClose);
+  const isSubmittingRef = useRef(submission.isSubmitting);
   useEffect(() => {
     onCloseRef.current = onClose;
-  }, [onClose]);
+    isSubmittingRef.current = submission.isSubmitting;
+  }, [onClose, submission.isSubmitting]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -55,7 +57,29 @@ export function SubmissionDialog({
     const { overflow, paddingRight } = document.body.style;
     const scrollbarWidth =
       window.innerWidth - document.documentElement.clientWidth;
-    dialog.showModal();
+    // Non-modal on purpose: showModal() puts the dialog in the browser's top
+    // layer (above every z-index) and makes the rest of the document inert,
+    // which would lock the navbar. The dialog sits under the navbar instead
+    // (z-index below the header's z-50), and only the page content behind it
+    // is made inert.
+    dialog.show();
+    const inerted = Array.from(dialog.parentElement?.children ?? []).filter(
+      (el): el is HTMLElement =>
+        el instanceof HTMLElement &&
+        el !== dialog &&
+        el.tagName !== "HEADER" &&
+        el.tagName !== "SCRIPT" &&
+        !el.inert,
+    );
+    inerted.forEach((el) => (el.inert = true));
+    const onKeyDown = (event: KeyboardEvent) => {
+      // Non-modal dialogs get no cancel event, so handle Escape here. Inner
+      // widgets (the tag picker) stop propagation when they consume it.
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      event.preventDefault();
+      if (!isSubmittingRef.current) onCloseRef.current();
+    };
+    document.addEventListener("keydown", onKeyDown);
     if (window.matchMedia("(min-width: 1024px)").matches) {
       dialog
         .querySelector<HTMLInputElement>("#submission-title")
@@ -67,6 +91,8 @@ export function SubmissionDialog({
     if (scrollbarWidth > 0)
       document.body.style.paddingRight = `${scrollbarWidth}px`;
     return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      inerted.forEach((el) => (el.inert = false));
       dialog.close();
       document.body.style.overflow = overflow;
       document.body.style.paddingRight = paddingRight;
@@ -99,11 +125,7 @@ export function SubmissionDialog({
       aria-labelledby={titleId}
       aria-describedby={descriptionId}
       data-state={leaving ? "leaving" : done ? "done" : undefined}
-      onCancel={(event) => {
-        event.preventDefault();
-        if (!submission.isSubmitting) onClose();
-      }}
-      className="submission-dialog fixed inset-x-0 top-[53px] bottom-0 m-0 h-[calc(100dvh-53px)] max-h-none w-full max-w-none overflow-y-auto overscroll-contain border-0 bg-white/80 p-0 text-zinc-900 backdrop-blur-[6px] outline-none backdrop:bg-transparent lg:overflow-hidden"
+      className="submission-dialog fixed inset-x-0 z-[45] top-[53px] bottom-0 m-0 h-[calc(100dvh-53px)] max-h-none w-full max-w-none overflow-y-auto overscroll-contain border-0 bg-white/80 p-0 text-zinc-900 backdrop-blur-[6px] outline-none lg:overflow-hidden"
     >
       <div
         className="submission-dialog-content mx-auto flex min-h-full w-full max-w-[1100px] flex-col px-4 py-6 sm:px-8 sm:py-8 lg:h-full lg:min-h-0 lg:overflow-hidden lg:px-10"
@@ -416,7 +438,7 @@ export function SubmissionDialog({
                 <button
                   type="submit"
                   disabled={submission.isSubmitting}
-                  className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-white/20 bg-brand px-5 py-3 text-[13px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_2px_5px_var(--brand-shadow)] outline-none transition-[background-color,transform] duration-150 hover:bg-brand-600 focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
+                  className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-white/20 bg-brand px-5 py-3 text-[13px] font-medium text-on-brand shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_2px_5px_var(--brand-shadow)] outline-none transition-[background-color,transform] duration-150 hover:bg-brand-600 focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
                 >
                   {submission.isSubmitting ? (
                     <>

@@ -115,8 +115,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#ffffff",
-  colorScheme: "light",
+  themeColor: "#0c0c0e",
+  colorScheme: "dark",
   width: "device-width",
   initialScale: 1,
 };
@@ -125,13 +125,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
+      data-mode="dark"
+      data-theme="blue"
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${funnelDisplay.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-white text-zinc-900">
-        {/* Applies the saved theme before first paint so there is no flash. */}
+        {/* Dark blue is server-rendered on <html>; this applies a saved colour theme or light mode before first paint so there is no flash. */}
         <Script id="theme-boot" strategy="beforeInteractive">
-          {`try{if(localStorage.getItem("eizoki:theme")==="pink"){document.documentElement.dataset.theme="pink"}}catch(e){}`}
+          {`try{var d=document.documentElement;if(localStorage.getItem("eizoki:theme")==="pink"){d.dataset.theme="pink"}if(localStorage.getItem("eizoki:mode")==="light"){d.dataset.mode="light"}}catch(e){}`}
         </Script>
         <ThemeProvider>
           <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-in">

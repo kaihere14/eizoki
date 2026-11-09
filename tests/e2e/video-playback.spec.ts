@@ -190,6 +190,8 @@ for (const sourceUrl of [undefined, "https://x.com/creator/status/123"]) {
     page,
     context,
   }) => {
+    // The colour assertions below are for the light canvas; dark is the default.
+    await page.addInitScript(() => localStorage.setItem("eizoki:mode", "light"));
     const card = await openFeed(page, false, { promptText: null, sourceUrl });
     await card.click();
     const dialog = page.getByRole("dialog");

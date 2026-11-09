@@ -103,7 +103,7 @@ export function RestrictionNotice({
           type="button"
           autoFocus
           onClick={dismiss}
-          className="rounded-full border border-white/20 bg-brand px-5 py-2 text-[12.5px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_2px_5px_var(--brand-shadow)] outline-none transition-[background-color,transform] duration-150 hover:bg-brand-600 focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 active:scale-[0.97]"
+          className="rounded-full border border-white/20 bg-brand px-5 py-2 text-[12.5px] font-medium text-on-brand shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_2px_5px_var(--brand-shadow)] outline-none transition-[background-color,transform] duration-150 hover:bg-brand-600 focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 active:scale-[0.97]"
         >
           Got it
         </button>

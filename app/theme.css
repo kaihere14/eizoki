@@ -1,20 +1,55 @@
 /*
  * Eizoki palette.
  *
- * Every accent is a CSS variable, so a theme can be swapped at runtime by
- * setting `data-theme` on <html>. The neutral canvas is shared by all themes;
- * only the brand scale changes.
+ * Two independent switches on <html>, both applied before first paint by the
+ * boot script in app/layout.tsx:
+ *
+ *   data-mode="light" | "dark"   the neutral canvas (backgrounds, text, borders)
+ *   data-theme="blue" | "pink"   the brand accent
+ *
+ * That gives four brand palettes: light blue, light pink, dark blue and dark
+ * pink. Every accent is a CSS variable, so components never branch on theme.
+ *
+ * The default is dark blue: app/layout.tsx server-renders
+ * data-mode="dark" data-theme="blue", and the boot script switches to a saved
+ * light mode or pink theme. The light rules below also sit on bare `:root`;
+ * the dark rules have higher specificity, so they win whenever data-mode="dark".
+ *
+ * Dark mode also re-points Tailwind's `white`, `zinc-*` and status tints
+ * (red / amber / emerald) at dark values. Those utilities are already used
+ * across the app, so they flip without per-component `dark:` classes.
+ * `black` is left alone: it is used for video overlays that stay dark.
+ * Text on a brand or red fill uses `text-on-brand`, which stays white.
  */
+
+/* ------------------------------------------------------------------------
+ * Light mode — neutral canvas
+ * --------------------------------------------------------------------- */
 :root,
-[data-theme="blue"] {
+[data-mode="light"] {
   color-scheme: light;
 
-  /* Neutral canvas */
   --background: #ffffff;
   --foreground: #09090b;
   --border: #ffffff;
+  --on-brand: #ffffff;
 
-  /* Brand scale */
+  /* Raised controls (search pill, card actions, chips): a soft top-lit
+     gradient with a bright inner top edge. */
+  --raised-top: #ffffff;
+  --raised-mid: #fafafa;
+  --raised-bottom: #f1f1f3;
+  --raised-sunken: #f4f4f5;
+  --raised-highlight: #ffffff;
+
+  /* Loading placeholders */
+  --skeleton: #f4f4f5;
+  --shimmer: rgb(255 255 255 / 0.7);
+}
+
+/* Light mode — main blue */
+:root,
+[data-theme="blue"] {
   --brand-50: #eef4ff;
   --brand-100: #dbe8ff;
   --brand-400: #4a86ff;
@@ -24,6 +59,7 @@
   --brand-shadow-strong: rgba(48, 116, 254, 0.45);
 }
 
+/* Light mode — main pink */
 [data-theme="pink"] {
   --brand-50: #fdf2f7;
   --brand-100: #fbe4ee;
@@ -32,4 +68,81 @@
   --brand-600: #bf2560;
   --brand-shadow: rgba(214, 51, 108, 0.3);
   --brand-shadow-strong: rgba(214, 51, 108, 0.45);
+}
+
+/* ------------------------------------------------------------------------
+ * Dark mode — neutral canvas (default)
+ * --------------------------------------------------------------------- */
+:root[data-mode="dark"] {
+  color-scheme: dark;
+
+  --background: #0c0c0e;
+  --foreground: #f4f4f5;
+  --border: #1c1c20;
+
+  --raised-top: #2a2a30;
+  --raised-mid: #222227;
+  --raised-bottom: #1b1b1f;
+  --raised-sunken: #17171a;
+  --raised-highlight: rgb(255 255 255 / 0.09);
+
+  --skeleton: #1c1c20;
+  --shimmer: rgb(255 255 255 / 0.05);
+
+  /* Surfaces: `bg-white` is the page and card surface. */
+  --color-white: #0c0c0e;
+
+  /* Neutral scale, inverted so `text-zinc-900` stays high contrast and
+     `bg-zinc-50` / `border-zinc-200` stay subtle. */
+  --color-zinc-50: #141417;
+  --color-zinc-100: #1c1c20;
+  --color-zinc-200: #2a2a30;
+  --color-zinc-300: #3a3a42;
+  --color-zinc-400: #6c6c76;
+  --color-zinc-500: #91919a;
+  --color-zinc-600: #ababb3;
+  --color-zinc-700: #c6c6cc;
+  --color-zinc-800: #dcdce0;
+  --color-zinc-900: #ececef;
+  --color-zinc-950: #f7f7f8;
+
+  /* Status tints: dark washes with light text. */
+  --color-red-50: #2a1214;
+  --color-red-100: #3b1619;
+  --color-red-200: #561d22;
+  --color-red-600: #e5484d;
+  --color-red-700: #ff6369;
+  --color-amber-50: #271c0a;
+  --color-amber-200: #4a3510;
+  --color-amber-500: #f5a524;
+  --color-amber-700: #ffca5c;
+  --color-amber-800: #ffd88a;
+  --color-emerald-50: #0d2119;
+  --color-emerald-200: #164430;
+  --color-emerald-700: #4cd99a;
+}
+
+/* Dark mode — main blue (default): lifted so it reads on the dark canvas. `600` is the
+   hover fill and the text colour on `brand-50`, so it is lighter than `500`. */
+:root[data-mode="dark"],
+[data-mode="dark"] [data-theme="blue"] {
+  --brand-50: #111c33;
+  --brand-100: #172747;
+  --brand-400: #7ea6ff;
+  --brand-500: #3a7bff;
+  --brand-600: #5c91ff;
+  --brand-shadow: rgba(58, 123, 255, 0.35);
+  --brand-shadow-strong: rgba(58, 123, 255, 0.5);
+}
+
+/* Dark mode — main pink */
+:root[data-mode="dark"][data-theme="pink"],
+[data-mode="dark"] [data-theme="pink"] {
+  --brand-50: #2a121e;
+  --brand-100: #3a1829;
+  --brand-400: #f27aa8;
+  --brand-500: #e0447c;
+  --brand-600: #ec6494;
+  --brand-shadow: rgba(224, 68, 124, 0.35);
+  --brand-shadow-strong: rgba(224, 68, 124, 0.5);
 }

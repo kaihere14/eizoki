@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { Globe, Plus } from "lucide-react";
 import { HoverHint } from "@/components/navbar";
-import { useEizokiUser } from "@/components/user-provider";
 import { SPONSOR_CAPACITY, type PublicSponsor } from "@/lib/sponsorships";
 
 const ICON_CLASS =
@@ -43,23 +41,21 @@ function SponsorIcon({ sponsor }: { sponsor: PublicSponsor }) {
 
 /** Live sponsors, then an invitation while a navbar slot is still free. */
 export function NavbarSponsorLinks({ sponsors }: { sponsors: PublicSponsor[] }) {
-  // Admins skip the pitch and land on the navbar booking form.
-  const isAdmin = useEizokiUser().user?.isAdmin === true;
-  const label = isAdmin ? "Add a navbar sponsor" : "Become a Sponsor";
   return (
     <>
       {sponsors.map((sponsor) => (
         <SponsorIcon key={sponsor.id} sponsor={sponsor} />
       ))}
       {sponsors.length < SPONSOR_CAPACITY.NAVBAR && (
-        <HoverHint label={label}>
-          <Link
-            href={isAdmin ? "/sponsor?plan=navbar" : "/sponsor"}
-            aria-label={label}
+        <HoverHint label="Sponsor">
+          {/* A fresh visit also clears an open booking when already on /sponsor. */}
+          <a
+            href="/sponsor"
+            aria-label="Sponsor"
             className="relative w-7 h-7 rounded-[7px] flex items-center justify-center text-zinc-400 bg-zinc-50/40 border border-dashed border-zinc-300 hover:text-brand hover:bg-brand/5 hover:border-brand/70 focus-visible:outline-none focus-visible:border-brand focus-visible:text-brand active:scale-[0.94] transition-[background-color,border-color,color,transform] duration-150 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" strokeWidth={1.9} />
-          </Link>
+          </a>
         </HoverHint>
       )}
     </>

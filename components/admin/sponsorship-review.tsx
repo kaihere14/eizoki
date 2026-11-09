@@ -108,7 +108,7 @@ function ApproveForm({ row, now }: { row: ReviewRow; now: string }) {
       <button
         type="submit"
         disabled={pending || !valid}
-        className={`${buttonClass} bg-brand text-white hover:bg-brand-600`}
+        className={`${buttonClass} bg-brand text-on-brand hover:bg-brand-600`}
       >
         {pending && <Pending />}
         {row.status === "APPROVED" ? "Reschedule" : "Approve"}

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useUser } from "@clerk/nextjs";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useLoginModal } from "@/components/login-modal";
 import { useEizokiUser } from "@/components/user-provider";
 import { sponsorWebsiteOrigin } from "@/lib/sponsor-website";
@@ -25,8 +25,6 @@ import {
   VIDEO_CONTENT_TYPES,
 } from "@/lib/video-upload-limits";
 import {
-  Suspense,
-  useCallback,
   useEffect,
   useRef,
   useState,
@@ -89,7 +87,7 @@ type Plan = (typeof PLANS)[number]["id"];
 const fieldClass =
   "mt-2 block w-full rounded-[10px] border border-zinc-200 bg-white px-3 py-2.5 text-[13px] text-zinc-900 outline-none transition-[border-color,box-shadow] placeholder:text-zinc-400 focus:border-brand focus:ring-[3px] focus:ring-brand/10";
 const raisedButton =
-  "inline-flex items-center justify-center gap-2 rounded-full border border-white bg-[linear-gradient(180deg,#fff_0%,#fafafa_52%,#f1f1f3_100%)] px-4 py-2.5 text-[12.5px] font-medium text-zinc-800 shadow-[inset_0_1px_0_#fff,inset_0_-1px_1px_rgba(0,0,0,0.06),0_2px_3px_rgba(9,9,11,0.08),0_5px_12px_-5px_rgba(9,9,11,0.18)] outline-none transition-[transform,box-shadow] duration-150 focus-visible:ring-2 focus-visible:ring-brand motion-safe:active:scale-[0.97] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)]";
+  "inline-flex items-center justify-center gap-2 rounded-full border border-white bg-[linear-gradient(180deg,var(--raised-top)_0%,var(--raised-mid)_52%,var(--raised-bottom)_100%)] px-4 py-2.5 text-[12.5px] font-medium text-zinc-800 shadow-[inset_0_1px_0_var(--raised-highlight),inset_0_-1px_1px_rgba(0,0,0,0.06),0_2px_3px_rgba(9,9,11,0.08),0_5px_12px_-5px_rgba(9,9,11,0.18)] outline-none transition-[transform,box-shadow] duration-150 focus-visible:ring-2 focus-visible:ring-brand motion-safe:active:scale-[0.97] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)]";
 
 function PlacementPreview({ plan }: { plan: Plan }) {
   if (plan === "navbar")
@@ -109,7 +107,7 @@ function PlacementPreview({ plan }: { plan: Plan }) {
             </span>
           </div>
           <Plus className="h-3.5 w-3.5 text-zinc-300" aria-hidden="true" />
-          <span className="rounded-full bg-brand px-2.5 py-1 text-[10px] text-white">
+          <span className="rounded-full bg-brand px-2.5 py-1 text-[10px] text-on-brand">
             Submit
           </span>
         </div>
@@ -148,23 +146,6 @@ const endDate = new Intl.DateTimeFormat("en-GB", {
   month: "long",
   year: "numeric",
 });
-
-/**
- * `/sponsor?plan=navbar` (the admin "+" in the navbar) opens a booking form
- * directly. The parameter is consumed so closing and reopening still works.
- */
-function PlanFromUrl({ onPlan }: { onPlan: (plan: Plan) => void }) {
-  const plan = useSearchParams().get("plan");
-  const router = useRouter();
-  const pathname = usePathname();
-  useEffect(() => {
-    const match = PLANS.find((item) => item.id === plan);
-    if (!match) return;
-    onPlan(match.id);
-    router.replace(pathname, { scroll: false });
-  }, [plan, onPlan, router, pathname]);
-  return null;
-}
 
 export function Sponsorship() {
   const [selected, setSelected] = useState<Plan | null>(null);
@@ -312,13 +293,12 @@ export function Sponsorship() {
     }
   }
 
-  // Stable so the URL reader's effect only reruns when `?plan=` changes.
-  const choosePlan = useCallback((id: Plan) => {
+  function choosePlan(id: Plan) {
     setSelected(id);
     setReviewing(false);
     setSubmit({ status: "idle" });
     setVideoError(null);
-  }, []);
+  }
 
   function closeBooking() {
     setSelected(null);
@@ -328,9 +308,6 @@ export function Sponsorship() {
 
   return (
     <main className="mx-auto w-full max-w-[1000px] px-4 pb-24 sm:px-6">
-      <Suspense fallback={null}>
-        <PlanFromUrl onPlan={choosePlan} />
-      </Suspense>
       <section aria-labelledby="sponsor-plans" className="pt-3 sm:pt-6">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-2">
           <h2
@@ -541,7 +518,7 @@ export function Sponsorship() {
                     type="button"
                     onClick={book}
                     disabled={submit.status === "submitting"}
-                    className="inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-[12.5px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_2px_4px_var(--brand-shadow)] outline-none transition-[background-color,transform] duration-150 hover:bg-brand-600 focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 motion-safe:active:scale-[0.97] disabled:cursor-wait disabled:opacity-70"
+                    className="inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-[12.5px] font-medium text-on-brand shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_2px_4px_var(--brand-shadow)] outline-none transition-[background-color,transform] duration-150 hover:bg-brand-600 focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 motion-safe:active:scale-[0.97] disabled:cursor-wait disabled:opacity-70"
                   >
                     {submit.status === "submitting" && (
                       <LoaderCircle

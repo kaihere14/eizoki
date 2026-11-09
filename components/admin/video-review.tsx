@@ -97,7 +97,7 @@ function ApproveForm({ row }: { row: VideoReviewRow }) {
       <button
         type="submit"
         disabled={pending}
-        className={`${buttonClass} bg-brand text-white hover:bg-brand-600`}
+        className={`${buttonClass} bg-brand text-on-brand hover:bg-brand-600`}
       >
         {pending && <Pending />}
         Approve and publish

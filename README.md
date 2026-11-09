@@ -452,10 +452,22 @@ assets or database entries are created.
 
 The palette lives in `app/theme.css` as CSS variables, and `app/globals.css` maps
 them to Tailwind tokens (`bg-brand`, `text-brand`, `border-brand`, `bg-brand-50`,
-`hover:bg-brand-600`, `var(--brand-shadow)`, …). The default blue theme is declared
-on `:root`; `[data-theme="pink"]` swaps the brand scale for pink shades. The neutral
-canvas is shared, so only accents change.
+`hover:bg-brand-600`, `text-on-brand`, `var(--brand-shadow)`, …). Two independent
+switches on `<html>` pick the palette:
 
-Signed-in users switch themes from the avatar menu, just below Choose avatar. The
-choice is saved in `localStorage` (`eizoki:theme`) and applied by a boot script in the
-root layout before first paint, so pages stay static and there is no colour flash.
+- `data-theme="blue" | "pink"` picks the brand accent.
+- `data-mode="light" | "dark"` picks the neutral canvas.
+
+That gives four brand palettes in `theme.css`: light blue, light pink, dark blue
+and dark pink. Dark blue is the default: the root layout server-renders
+`data-mode="dark" data-theme="blue"` on `<html>`. Dark mode also re-points
+Tailwind's `white`, `zinc-*` and status tints (red, amber, emerald) at dark values,
+so existing utilities flip without per-component `dark:` classes. Use
+`text-on-brand` (not `text-white`) for text on a brand or red fill, and the
+`--raised-*` variables for the raised control gradients. A `dark:` variant that
+follows the in-app switch is available for one-off tweaks.
+
+Signed-in users switch the colour theme and Light/Dark appearance from the avatar
+menu, just below Choose avatar. The choices are saved in `localStorage`
+(`eizoki:theme`, `eizoki:mode`) and applied by a boot script in the root layout
+before first paint, so pages stay static and there is no colour flash.

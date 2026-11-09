@@ -4,12 +4,13 @@ import Image from "next/image";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useEffect, useRef, useState } from "react";
 import { useEizokiUser } from "@/components/user-provider";
-import { THEMES, useTheme } from "@/components/theme-provider";
+import { Moon, Sun } from "lucide-react";
+import { MODES, THEMES, useTheme } from "@/components/theme-provider";
 import { AVATAR_IMAGES } from "@/lib/user";
 import { authErrorMessage } from "./use-auth-flow";
 
 const loginClass =
-  "relative z-10 px-3.5 py-1 rounded-full text-[12.5px] font-medium bg-brand text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_2px_4px_var(--brand-shadow)] border border-white/20 active:scale-[0.97] hover:bg-brand-600 transition-[background-color,transform,box-shadow] duration-150 ease-out cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-60";
+  "relative z-10 px-3.5 py-1 rounded-full text-[12.5px] font-medium bg-brand text-on-brand shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_2px_4px_var(--brand-shadow)] border border-white/20 active:scale-[0.97] hover:bg-brand-600 transition-[background-color,transform,box-shadow] duration-150 ease-out cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-60";
 
 const avatarClass =
   "relative z-10 h-7 w-7 shrink-0 rounded-[7px] overflow-hidden bg-white border border-zinc-200/90 shadow-[0_1px_2px_rgba(9,9,11,0.08)] active:scale-[0.94] hover:shadow-[0_1px_3px_rgba(9,9,11,0.12)] transition-[transform,box-shadow] duration-150 ease-out cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
@@ -39,7 +40,7 @@ function AvatarImage({
       width={128}
       height={128}
       sizes={`${size}px`}
-      className="h-full w-full object-cover"
+      className="h-full w-full object-cover dark:invert"
       onError={() => setFailedSrc(src)}
     />
   );
@@ -48,7 +49,7 @@ function AvatarImage({
 export function AccountControl({ onLogin }: { onLogin: () => void }) {
   const { user, isLoaded, isSignedIn } = useUser();
   const { user: account, error: accountError, updateAvatar } = useEizokiUser();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, mode, setMode } = useTheme();
   const clerk = useClerk();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -211,6 +212,28 @@ export function AccountControl({ onLogin }: { onLogin: () => void }) {
                   {option.label}
                 </button>
               ))}
+            </div>
+          </fieldset>
+          <fieldset className="mt-4 border-t border-zinc-100 pt-4">
+            <legend className="sr-only">Appearance</legend>
+            <p className="text-xs font-medium text-zinc-600">Appearance</p>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              {MODES.map((option) => {
+                const Icon = option.value === "dark" ? Moon : Sun;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    aria-label={`${option.label} mode`}
+                    aria-pressed={mode === option.value}
+                    onClick={() => setMode(option.value)}
+                    className={`flex items-center justify-center gap-2 rounded-xl border p-2 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${mode === option.value ? "border-brand bg-brand-50 text-brand-600" : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"}`}
+                  >
+                    <Icon aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.8} />
+                    {option.label}
+                  </button>
+                );
+              })}
             </div>
           </fieldset>
           <button

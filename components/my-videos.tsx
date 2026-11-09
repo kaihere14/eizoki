@@ -27,7 +27,7 @@ export function MyVideos() {
         <button
           type="button"
           onClick={openLoginModal}
-          className="mt-5 rounded-full bg-brand px-5 py-2.5 text-[13px] font-medium text-white outline-none hover:bg-brand-600 focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+          className="mt-5 rounded-full bg-brand px-5 py-2.5 text-[13px] font-medium text-on-brand outline-none hover:bg-brand-600 focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
         >
           Sign in
         </button>
