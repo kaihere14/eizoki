@@ -11,6 +11,12 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "images.clerk.dev" },
     ],
   },
+  async headers() {
+    return [{
+      source: "/api/:path*",
+      headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+    }];
+  },
   async redirects() {
     return [
       // /admin is the review area; videos is the default queue.

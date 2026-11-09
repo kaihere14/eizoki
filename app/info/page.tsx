@@ -1,12 +1,9 @@
-import type { Metadata } from "next";
+import { pageMetadata, pageGraph, PUBLIC_PAGES } from "@/lib/seo";
+import { JsonLd } from "@/components/json-ld";
 import { PageIntro } from "@/components/page-intro";
 import { CATEGORY_LABELS } from "@/lib/videos";
 
-export const metadata: Metadata = {
-  title: "Info",
-  description:
-    "About Eizoki — a hand-curated catalogue of AI motion, motion design and launch films worth watching.",
-};
+export const metadata = pageMetadata(PUBLIC_PAGES.about);
 
 const SECTIONS = [
   {
@@ -30,6 +27,7 @@ const SECTIONS = [
 export default function InfoPage() {
   return (
     <>
+      <JsonLd data={pageGraph(PUBLIC_PAGES.about)} />
       <PageIntro
         title="About"
         accent="Eizoki"

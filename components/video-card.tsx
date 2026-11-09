@@ -148,6 +148,15 @@ export function VideoCard({
         )}
       </button>
 
+      <div className="px-0.5 pt-2.5">
+        <h2 className="text-[12.5px] font-medium leading-snug text-zinc-800">
+          {video.title}
+        </h2>
+        <p className="mt-1 text-[11.5px] leading-snug text-zinc-500">
+          By {video.creator.name}
+        </p>
+      </div>
+
       {/* Hover actions float above the card; keyboard focus reveals them too. */}
       <div className="pointer-events-none absolute right-2 top-2 z-10 flex items-center gap-1 opacity-0 transition-opacity duration-150 focus-within:pointer-events-auto focus-within:opacity-100 group-hover/card:pointer-events-auto group-hover/card:opacity-100 max-sm:pointer-events-auto max-sm:opacity-100 motion-reduce:transition-none">
         {originalUrl && (

@@ -1,4 +1,13 @@
 import type { Metadata, Viewport } from "next";
+import {
+  HOME_TITLE,
+  PUBLIC_ROBOTS,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_URL,
+  siteGraph,
+} from "@/lib/seo";
+import { JsonLd } from "@/components/json-ld";
 import { ClerkProvider } from "@clerk/nextjs";
 import Script from "next/script";
 import { Geist, Geist_Mono, Funnel_Display } from "next/font/google";
@@ -25,93 +34,17 @@ const funnelDisplay = Funnel_Display({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://eizoki.com"),
-  title: {
-    default: "Eizoki - Premium AI Motion & Video Inspiration Library",
-    template: "%s | Eizoki — AI Motion & Video Inspiration",
-  },
-  description:
-    "A hand-curated visual discovery platform showcasing exceptional AI-generated videos, motion design, creative experiments, and product launch films from creators worldwide.",
-  applicationName: "Eizoki",
-  authors: [{ name: "Eizoki Editorial", url: "https://eizoki.com" }],
-  creator: "Eizoki",
-  publisher: "Eizoki",
-  generator: "Next.js",
-  keywords: [
-    "AI motion design",
-    "AI video inspiration",
-    "generative motion",
-    "AI video curation",
-    "motion design",
-    "creative experiments",
-    "product launch videos",
-    "UI motion",
-    "kinetic typography",
-    "3D neural simulations",
-    "cinematic AI storytelling",
-    "Sora",
-    "Runway Gen-3",
-    "Kling AI",
-    "Luma Dream Machine",
-    "Midjourney",
-    "ComfyUI",
-    "curated motion library",
-    "design inspiration",
-  ],
+  metadataBase: new URL(SITE_URL),
+  title: { default: HOME_TITLE, template: "%s | Eizoki" },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
   referrer: "origin-when-cross-origin",
-  formatDetection: {
-    email: false,
-    address: false,
-    telephone: false,
-  },
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    url: "https://eizoki.com",
-    siteName: "Eizoki",
-    title: "Eizoki - Premium AI Motion & Video Inspiration Library",
-    description:
-      "A hand-curated visual discovery platform showcasing exceptional AI-generated videos, motion design, creative experiments, and product launch films.",
-    images: [
-      {
-        url: "/eizoki.webp",
-        width: 1200,
-        height: 630,
-        alt: "Eizoki — Hand-curated AI Motion & Video Inspiration Library",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Eizoki - Premium AI Motion & Video Inspiration Library",
-    description:
-      "A hand-curated visual discovery platform showcasing exceptional AI-generated videos, motion design, creative experiments, and product launch films.",
-    images: ["/eizoki.webp"],
-    creator: "@eizoki",
-    site: "@eizoki",
-  },
-  icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/eizoki.webp", type: "image/webp" },
-    ],
-    apple: [{ url: "/eizoki.webp" }],
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-    },
-  },
+  formatDetection: { email: false, address: false, telephone: false },
+  icons: { icon: [{ url: "/favicon.ico", sizes: "any" }] },
+  robots: PUBLIC_ROBOTS,
   category: "Design & Creative Inspiration",
-  alternates: {
-    canonical: "https://eizoki.com",
-  },
 };
 
 export const viewport: Viewport = {
@@ -131,6 +64,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} ${funnelDisplay.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-white text-zinc-900">
+        <JsonLd data={siteGraph()} />
         {/* Dark blue is server-rendered on <html>; this applies a saved colour theme or light mode before first paint so there is no flash. */}
         <Script id="theme-boot" strategy="beforeInteractive">
           {`try{var d=document.documentElement;if(localStorage.getItem("eizoki:theme")==="pink"){d.dataset.theme="pink"}if(localStorage.getItem("eizoki:mode")==="light"){d.dataset.mode="light"}}catch(e){}`}

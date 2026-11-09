@@ -8,7 +8,7 @@ import { useEizokiUser } from "@/components/user-provider";
 import { SponsoredVideoCard } from "@/components/sponsored-video-card";
 import { VideoCard } from "@/components/video-card";
 import { VideoPreview } from "@/components/video-preview";
-import { fetchVideoFeed } from "@/lib/video-feed";
+import { fetchVideoFeed, type VideoFeedPage } from "@/lib/video-feed";
 import {
   FEED_SPONSOR_POSITION,
   type PublicFeedSponsor,
@@ -22,21 +22,28 @@ function mergeVideos(current: VideoMetadata[], incoming: VideoMetadata[]) {
   return [...current, ...incoming.filter((video) => !seen.has(video.id))];
 }
 
-export function VideoFeed() {
-  const [videos, setVideos] = useState<VideoMetadata[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [status, setStatus] = useState<FeedStatus>("loading");
+export function VideoFeed({ initialPage }: { initialPage?: VideoFeedPage } = {}) {
+  const [videos, setVideos] = useState<VideoMetadata[]>(initialPage?.videos ?? []);
+  const [nextCursor, setNextCursor] = useState<string | null>(
+    initialPage?.nextCursor ?? null,
+  );
+  const [status, setStatus] = useState<FeedStatus>(
+    initialPage ? "ready" : "loading",
+  );
   const [error, setError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [selected, setSelected] = useState<VideoMetadata | null>(null);
-  const [sponsor, setSponsor] = useState<PublicFeedSponsor | null>(null);
+  const [sponsor, setSponsor] = useState<PublicFeedSponsor | null>(
+    initialPage?.sponsor ?? null,
+  );
   const [deleting, setDeleting] = useState<VideoMetadata | null>(null);
   // Only reveals the control; the API re-checks admin in Postgres.
   const isAdmin = useEizokiUser().user?.isAdmin === true;
 
   useEffect(() => {
+    if (initialPage && refreshToken === 0) return;
     const controller = new AbortController();
 
     fetchVideoFeed({ signal: controller.signal })
@@ -57,7 +64,7 @@ export function VideoFeed() {
       });
 
     return () => controller.abort();
-  }, [refreshToken]);
+  }, [refreshToken, initialPage]);
 
   // A successful submission asks the feed to pick up the new record.
   useEffect(() => {

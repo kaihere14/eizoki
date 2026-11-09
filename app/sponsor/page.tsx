@@ -1,17 +1,14 @@
-import type { Metadata } from "next";
+import { pageMetadata, pageGraph, PUBLIC_PAGES } from "@/lib/seo";
+import { JsonLd } from "@/components/json-ld";
 import { PageIntro } from "@/components/page-intro";
 import { Sponsorship } from "@/components/sponsorship";
 
-export const metadata: Metadata = {
-  title: "Sponsor",
-  description:
-    "Put your video or product in front of the Eizoki community. Explore featured video and navbar sponsorships.",
-  alternates: { canonical: "/sponsor" },
-};
+export const metadata = pageMetadata(PUBLIC_PAGES.sponsor);
 
 export default function SponsorPage() {
   return (
     <>
+      <JsonLd data={pageGraph(PUBLIC_PAGES.sponsor)} />
       <PageIntro
         title="Sponsor"
         accent="Eizoki"

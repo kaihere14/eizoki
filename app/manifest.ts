@@ -18,7 +18,7 @@ export default function manifest(): MetadataRoute.Manifest {
       },
       {
         src: "/eizoki.webp",
-        sizes: "192x192 512x512",
+        sizes: "1265x1243",
         type: "image/webp",
       },
     ],
