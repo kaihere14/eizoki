@@ -98,6 +98,12 @@ model Video {
   imagekitFileId  String? @unique
   storageKey      String? @unique
   durationSeconds Float?
+  /// Still frame (WebP in R2) shown while the video loads. Optional: older
+  /// videos and uploads whose frame the browser could not capture have none.
+  posterKey       String? @unique
+  /// Width / height of the video, read from the poster. Lets the feed reserve
+  /// each card's real shape before any media arrives.
+  aspectRatio     Float?
 
   /// Keep the prompt verbatim; append our stable video reference URL on copy.
   promptStatus   VideoPromptStatus @default(UNAVAILABLE)

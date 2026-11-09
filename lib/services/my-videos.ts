@@ -1,8 +1,9 @@
 import { ApiError } from "@/lib/api-error";
-import { playableVideoUrl } from "@/lib/video-delivery";
 import { prisma } from "@/lib/prisma";
 import { deleteImageKitFile } from "./imagekit";
+import { deliveredVideoUrl } from "./media-url";
 import { deleteR2Object } from "./r2";
+import { cleanupPoster } from "./video-posters";
 import { requireSubmissionUser } from "./submission-user";
 import {
   videoDetails,
@@ -33,7 +34,7 @@ export async function listMyVideos(
     videos: page.map((row) => ({
       ...videoDetails(row),
       // A rejected video's file is deleted; the uploader sees only the status.
-      videoUrl: row.videoUrl ? playableVideoUrl(row.videoUrl) : null,
+      videoUrl: deliveredVideoUrl(row),
       reviewStatus: row.reviewStatus,
       createdAt: row.createdAt.toISOString(),
     })),
@@ -51,7 +52,7 @@ export async function deleteMyVideo(id: string) {
   const where = user.isAdmin ? { id } : { id, submittedById: user.id };
   const owned = await prisma.video.findFirst({
     where,
-    select: { imagekitFileId: true, storageKey: true },
+    select: { imagekitFileId: true, storageKey: true, posterKey: true },
   });
   // Missing and someone else's video have the same response.
   if (!owned) throw new ApiError(404, "Video not found.");
@@ -75,4 +76,6 @@ export async function deleteMyVideo(id: string) {
       "The video file was removed, but its entry could not be deleted. Please retry.",
     );
   }
+  // Nothing references the poster any more; a failure only leaves a stray image.
+  await cleanupPoster(owned.posterKey);
 }

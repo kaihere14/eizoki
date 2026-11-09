@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
 
-type File = { storageKey: string | null; imagekitFileId: string | null };
+type File = {
+  storageKey: string | null;
+  imagekitFileId: string | null;
+  posterKey?: string | null;
+};
 const findVideo = mock<(args: unknown) => Promise<File | { id: string } | null>>(
   async () => ({ storageKey: "videos/u/a.mp4", imagekitFileId: null }),
 );
@@ -57,6 +61,17 @@ describe("rejecting a video", () => {
     expect(cleanupR2).toHaveBeenCalledWith("videos/u/a.mp4");
     // The record changes first, so a concurrent approval can never point at a deleted file.
     expect(order).toEqual(["update", "delete-file"]);
+  });
+
+  test("deletes the poster frame along with the video", async () => {
+    findVideo.mockResolvedValue({
+      storageKey: "videos/u/a.mp4",
+      imagekitFileId: null,
+      posterKey: "videos/u/a.poster.webp",
+    });
+    await rejectVideo("video-1", undefined, "admin");
+    expect(updateArgs().data).toMatchObject({ posterKey: null });
+    expect(cleanupR2).toHaveBeenCalledWith("videos/u/a.poster.webp");
   });
 
   test("deletes older ImageKit files the same way", async () => {

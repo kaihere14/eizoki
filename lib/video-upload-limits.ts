@@ -21,5 +21,11 @@ export function isVideoContentType(value: string): value is VideoContentType {
   return Object.hasOwn(VIDEO_CONTENT_TYPES, value);
 }
 
+/** Poster frames are captured at this width; enough for a card on a dense screen. */
+export const POSTER_WIDTH = 720;
+
+/** The captured frame before the server re-encodes it; usually 30–120 KB. */
+export const MAX_POSTER_BYTES = 400_000;
+
 /** Small multipart forms (sponsor booking fields plus a 2 MB icon). */
 export const MAX_FORM_REQUEST_BYTES = 3_000_000;

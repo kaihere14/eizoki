@@ -6,6 +6,7 @@ import { cleanupR2Object } from "./r2";
 import { requireSubmissionUser } from "./submission-user";
 import { assertCanUpload } from "./upload-limits";
 import { finishVideoUpload, type StoredVideo } from "./video-uploads";
+import { cleanupPoster, storeVideoPoster } from "./video-posters";
 import {
   parseVideoSubmission,
   type VideoSubmissionMetadata,
@@ -17,6 +18,7 @@ export function buildVideoSubmissionData(
   metadata: VideoSubmissionMetadata,
   user: Submitter,
   asset: StoredVideo,
+  poster: { posterKey: string; aspectRatio: number | null } | null = null,
 ) {
   const slugTitle =
     metadata.title
@@ -34,6 +36,8 @@ export function buildVideoSubmissionData(
     videoUrl: asset.url,
     storageKey: asset.key,
     durationSeconds: asset.durationSeconds,
+    posterKey: poster?.posterKey ?? null,
+    aspectRatio: poster?.aspectRatio ?? null,
     reviewStatus: approved
       ? ("APPROVED" as const)
       : ("PENDING_REVIEW" as const),
@@ -49,7 +53,7 @@ export function buildVideoSubmissionData(
  */
 export async function createVideoSubmission(request: Request) {
   const user = await requireSubmissionUser();
-  const { metadata, upload } = await parseVideoSubmission(
+  const { metadata, upload, poster } = await parseVideoSubmission(
     request,
     user.isAdmin,
   );
@@ -65,10 +69,12 @@ export async function createVideoSubmission(request: Request) {
   // Re-checked here: two uploads started side by side both passed the start check.
   await assertCanUpload(user, "video");
   const asset = await finishVideoUpload(upload, "video", user.id);
+  // Optional: without it the card shows its shimmer until the video loads.
+  const storedPoster = await storeVideoPoster(asset.key, poster);
 
   try {
     return await prisma.video.create({
-      data: buildVideoSubmissionData(metadata, user, asset),
+      data: buildVideoSubmissionData(metadata, user, asset, storedPoster),
       // Return a receipt, keeping moderation fields and attribution internals server-side.
       select: {
         id: true,
@@ -85,6 +91,7 @@ export async function createVideoSubmission(request: Request) {
       throw new ApiError(409, "This video was already submitted.");
     }
     await cleanupR2Object(asset.key);
+    await cleanupPoster(storedPoster?.posterKey);
     throw error;
   }
 }

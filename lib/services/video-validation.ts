@@ -2,11 +2,23 @@ import { z } from "zod";
 import { ApiError } from "@/lib/api-error";
 import { CATEGORY_LABELS } from "@/lib/videos";
 import { MAX_VIDEO_TAGS, VIDEO_TAG_VALUES } from "@/lib/video-tags";
-import { MAX_FORM_REQUEST_BYTES } from "@/lib/video-upload-limits";
+import {
+  MAX_FORM_REQUEST_BYTES,
+  MAX_POSTER_BYTES,
+} from "@/lib/video-upload-limits";
 import { parseUploadedVideo } from "./video-uploads";
 
-/** Metadata plus the finished-upload reference; the video itself never comes here. */
+/**
+ * Metadata, the finished-upload reference and an optional base64 poster frame;
+ * the video itself never comes here.
+ */
 const MAX_SUBMISSION_JSON_BYTES = 1_000_000;
+
+/** Base64 of at most MAX_POSTER_BYTES bytes. */
+const posterSchema = z
+  .string()
+  .max(Math.ceil(MAX_POSTER_BYTES / 3) * 4)
+  .regex(/^[A-Za-z0-9+/]+={0,2}$/);
 
 const optionalText = (max: number) => z.string().trim().max(max).optional();
 const optionalUrl = z
@@ -152,8 +164,10 @@ export async function readJsonBody(request: Request) {
 }
 
 /**
- * A submission is JSON: `{ metadata, upload }`. The video already sits in R2
- * as an unfinished multipart upload; `upload` names it and lists its parts.
+ * A submission is JSON: `{ metadata, upload, poster? }`. The video already
+ * sits in R2 as an unfinished multipart upload; `upload` names it and lists
+ * its parts. `poster` is an optional base64 still frame captured by the
+ * browser.
  */
 export async function parseVideoSubmission(request: Request, isAdmin: boolean) {
   const body = await readJsonBody(request);
@@ -161,7 +175,9 @@ export async function parseVideoSubmission(request: Request, isAdmin: boolean) {
     typeof body !== "object" ||
     body === null ||
     Array.isArray(body) ||
-    Object.keys(body).some((key) => !["metadata", "upload"].includes(key)) ||
+    Object.keys(body).some(
+      (key) => !["metadata", "upload", "poster"].includes(key),
+    ) ||
     !("metadata" in body) ||
     !("upload" in body)
   ) {
@@ -184,5 +200,16 @@ export async function parseVideoSubmission(request: Request, isAdmin: boolean) {
       "Only admins can feature videos or add curator notes.",
     );
   }
-  return { metadata: result.data, upload: parseUploadedVideo(body.upload) };
+  const poster =
+    "poster" in body && body.poster !== undefined
+      ? posterSchema.safeParse(body.poster)
+      : undefined;
+  if (poster && !poster.success) {
+    throw new ApiError(400, "poster: The preview frame is invalid or too large.");
+  }
+  return {
+    metadata: result.data,
+    upload: parseUploadedVideo(body.upload),
+    poster: poster?.data,
+  };
 }

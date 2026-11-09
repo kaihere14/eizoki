@@ -20,8 +20,9 @@ export function SponsoredVideoCard({
   className?: string;
 }) {
   const cardRef = useRef<HTMLAnchorElement>(null);
-  const { videoRef, shouldLoad } = useViewportVideo(cardRef, paused);
-  const [ready, setReady] = useState(false);
+  const { videoRef, shouldLoad, loadId } = useViewportVideo(cardRef, paused);
+  const [readyLoad, setReadyLoad] = useState(0);
+  const ready = shouldLoad && readyLoad === loadId;
   const [failed, setFailed] = useState(false);
   const [ratio, setRatio] = useState(16 / 10);
   const [iconFailed, setIconFailed] = useState(false);
@@ -47,7 +48,7 @@ export function SponsoredVideoCard({
               muted
               loop
               playsInline
-              preload="metadata"
+              preload="auto"
               aria-hidden="true"
               tabIndex={-1}
               onLoadedMetadata={(event) => {
@@ -56,7 +57,7 @@ export function SponsoredVideoCard({
                   setRatio(element.videoWidth / element.videoHeight);
                 }
               }}
-              onLoadedData={() => setReady(true)}
+              onLoadedData={() => setReadyLoad(loadId)}
               onError={() => setFailed(true)}
               className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${ready ? "opacity-100" : "opacity-0"}`}
             />

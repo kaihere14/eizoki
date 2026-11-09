@@ -26,9 +26,12 @@ export interface VideoMetadata {
   category: VideoCategory;
   tags: string[];
 
-  // Media assets. Thumbnails and aspect ratio are optional because the feed
-  // loads the video itself and the browser reports its intrinsic dimensions.
+  // Media assets. The poster and aspect ratio are optional: videos uploaded
+  // before posters existed (or whose frame could not be captured) have
+  // neither, and the card falls back to its shimmer and the video's own size.
   videoUrl: string;
+  /** Still frame shown while the video loads. */
+  posterUrl?: string;
   previewUrl?: string;
   thumbnailUrl?: string;
   aspectRatio?: number;

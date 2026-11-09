@@ -68,6 +68,7 @@ function PreviewMedia({
         ref={videoRef}
         key={video.id}
         src={video.videoUrl}
+        poster={video.posterUrl}
         controls
         autoPlay
         loop
@@ -83,7 +84,7 @@ function PreviewMedia({
         onLoadedData={() => setReady(true)}
         onError={() => setFailed(true)}
         className={`h-full w-full bg-zinc-950 object-contain transition-opacity duration-300 ${
-          ready ? "opacity-100" : "opacity-0"
+          ready || video.posterUrl ? "opacity-100" : "opacity-0"
         }`}
       />
 
@@ -99,16 +100,31 @@ function PreviewMedia({
 
 function MiniVideo({ video }: { video: VideoMetadata }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { videoRef, shouldLoad } = useViewportVideo(containerRef);
-  const [ready, setReady] = useState(false);
+  const { videoRef, shouldLoad, loadId } = useViewportVideo(containerRef);
+  const [readyLoad, setReadyLoad] = useState(0);
+  const ready = shouldLoad && readyLoad === loadId;
+  const [posterReady, setPosterReady] = useState(false);
   const [failed, setFailed] = useState(false);
 
   return (
     <div
       ref={containerRef}
-      className={`relative overflow-hidden rounded-lg border border-zinc-200/60 bg-zinc-100 ${ready || failed ? "" : "skeleton-shimmer"}`}
+      className={`relative overflow-hidden rounded-lg border border-zinc-200/60 bg-zinc-100 ${ready || posterReady || failed ? "" : "skeleton-shimmer"}`}
       style={{ aspectRatio: 4 / 3 }}
     >
+      {video.posterUrl && !failed && (
+        // Already a sized WebP; see VideoCard.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={video.posterUrl}
+          alt=""
+          aria-hidden="true"
+          loading="lazy"
+          decoding="async"
+          onLoad={() => setPosterReady(true)}
+          className={`absolute inset-0 h-full w-full object-cover ${posterReady ? "opacity-100" : "opacity-0"}`}
+        />
+      )}
       {shouldLoad && (
         <video
           ref={videoRef}
@@ -116,12 +132,12 @@ function MiniVideo({ video }: { video: VideoMetadata }) {
           muted
           loop
           playsInline
-          preload="metadata"
+          preload="auto"
           aria-hidden="true"
           tabIndex={-1}
-          onLoadedData={() => setReady(true)}
+          onLoadedData={() => setReadyLoad(loadId)}
           onError={() => setFailed(true)}
-          className={`h-full w-full object-cover transition-opacity duration-300 ${
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
             ready ? "opacity-100" : "opacity-0"
           }`}
         />

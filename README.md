@@ -256,7 +256,9 @@ is 500 MB (`lib/video-upload-limits.ts`).
 2. The browser `PUT`s each slice of the file to its URL, four at a time, retrying
    network and 5xx failures with backoff, and collects each part's `ETag`.
 3. `POST /api/videos` with JSON `{ "metadata": {...}, "upload": { "key",
-   "uploadId", "parts": [{ "partNumber", "etag" }], "durationSeconds"? } }`.
+   "uploadId", "parts": [{ "partNumber", "etag" }], "durationSeconds"? },
+   "poster"? }`. `poster` is a base64 still frame the browser captured from the
+   chosen file (see [Feed loading](#feed-loading)).
    The server validates the metadata first, so a rejected form leaves the parts in
    R2 and the browser resubmits without re-uploading. It then checks the key
    belongs to the caller, completes the upload (R2 joins the parts), checks the
@@ -272,8 +274,28 @@ Set these server-only variables (`.env.local` for development, the Vercel projec
 for production): `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
 `R2_BUCKET_NAME`, and `R2_PUBLIC_URL`. Create the access key as an R2 API token
 with Object Read & Write on the bucket only. `R2_PUBLIC_URL` is the bucket's
-public base URL: connect a custom domain (recommended; it is cached by
-Cloudflare) or enable the `r2.dev` URL for testing.
+public base URL. Use a custom domain in production: the `r2.dev` URL is
+rate-limited and never cached by Cloudflare, so every view of every video goes
+back to the bucket.
+
+Public URLs are built from each object's key and `R2_PUBLIC_URL` when a row is
+read, so switching domains needs no data migration: change the variable and
+redeploy.
+
+Connecting a custom domain (the domain's DNS must be on Cloudflare):
+
+1. R2 → the bucket → Settings → Custom Domains → Connect Domain, and enter a
+   subdomain such as `media.your-domain.com`. Cloudflare creates the DNS record.
+2. Add a Cache Rule (the zone → Caching → Cache Rules) for
+   `Hostname equals media.your-domain.com`: Eligible for cache, Edge TTL "Use
+   cache-control header if present". By default Cloudflare caches `.mp4`,
+   `.webm` and `.webp` by extension but not `.mov`; the rule covers every
+   upload. Objects are stored with `Cache-Control: public, max-age=31536000,
+   immutable`, and keys are never reused, so long caching is safe.
+3. No CORS change is needed: CORS only matters for uploads, which still go to
+   the S3 API endpoint, and plain `<video>` and `<img>` playback is not CORS.
+4. Set `R2_PUBLIC_URL=https://media.your-domain.com` and redeploy. Check a video
+   response in DevTools: the second request should show `cf-cache-status: HIT`.
 
 The browser uploads cross-origin, so the bucket needs a CORS policy that allows
 `PUT` from the site and exposes `ETag` (without it every upload fails with
@@ -296,6 +318,28 @@ one day, so parts from abandoned uploads do not accumulate storage.
 
 ImageKit (`IMAGEKIT_PRIVATE_KEY`) is still used for sponsor icons and to delete
 videos uploaded before the move to R2.
+
+#### Feed loading
+
+Videos are served as uploaded, with no server-side transcoding, so the feed
+keeps the first impression cheap in three ways:
+
+- **Poster frames.** When a file is chosen, the browser draws one frame (a
+  quarter of the way in, at most one second) onto a canvas and sends it as a
+  720px WebP with the submission. The server re-encodes it with sharp, stores
+  it next to the video (`<video key>.poster.webp`) and records the video's
+  aspect ratio, so cards have their real shape and an image within one small
+  request. A frame the browser cannot decode (for example HEVC in some
+  browsers) only means that video has no poster.
+- **A load queue** (`components/video-load-queue.ts`). At most three videos
+  fetch their first frame at a time, those highest on screen first; each slot
+  frees once the video can show a frame. Visible videos still autoplay.
+- **Unloading.** Videos more than 1600px off screen release their buffers and
+  fall back to their poster.
+
+Videos uploaded before posters existed get one with
+`bun run posters:backfill` (needs `ffmpeg`; `--dry-run` lists them first,
+`--limit 5` tries a few). It reads only the bytes around the frame over HTTP.
 
 #### Metadata
 

@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AVATAR_IMAGES } from "@/lib/user";
-import { playableVideoUrl } from "@/lib/video-delivery";
+import { deliveredVideoUrl, r2ObjectUrl } from "./media-url";
 import {
   CATEGORY_LABELS,
   type CreatorProfile,
@@ -87,6 +87,9 @@ export const VIDEO_FEED_SELECT = {
   creatorProfileUrl: true,
   sourceUrl: true,
   videoUrl: true,
+  storageKey: true,
+  posterKey: true,
+  aspectRatio: true,
   durationSeconds: true,
   promptStatus: true,
   promptText: true,
@@ -107,9 +110,14 @@ type VideoFeedRow = Prisma.VideoGetPayload<{
  * videos lose theirs, and a database check constraint guarantees that, so
  * approved and pending rows always pass.
  */
-export function storedVideoUrl(row: { id: string; videoUrl: string | null }) {
-  if (!row.videoUrl) throw new Error(`Video ${row.id} has no stored file.`);
-  return playableVideoUrl(row.videoUrl);
+export function storedVideoUrl(row: {
+  id: string;
+  videoUrl: string | null;
+  storageKey: string | null;
+}) {
+  const url = deliveredVideoUrl(row);
+  if (!url) throw new Error(`Video ${row.id} has no stored file.`);
+  return url;
 }
 
 export function toVideoMetadata(row: VideoFeedRow): VideoMetadata {
@@ -129,6 +137,8 @@ export function videoDetails(row: VideoFeedRow): Omit<VideoMetadata, "videoUrl">
     tags: row.tags,
     isFeatured: row.isFeatured,
     durationSeconds: row.durationSeconds ?? undefined,
+    posterUrl: row.posterKey ? r2ObjectUrl(row.posterKey) : undefined,
+    aspectRatio: row.aspectRatio ?? undefined,
     creator: {
       name: row.creatorName,
       avatarUrl: AVATAR_IMAGES[row.submittedBy.avatar],

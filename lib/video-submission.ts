@@ -69,15 +69,19 @@ export function submissionMetadata(
   };
 }
 
-/** Finalise a video already uploaded to R2 with its catalogue details. */
+/**
+ * Finalise a video already uploaded to R2 with its catalogue details and,
+ * when the browser could capture one, a base64 poster frame.
+ */
 export async function sendVideoSubmission(
   upload: FinishedUpload,
   metadata: VideoSubmissionMetadata,
+  poster?: string,
 ): Promise<VideoSubmissionReceipt> {
   const response = await fetch("/api/videos", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ metadata, upload }),
+    body: JSON.stringify({ metadata, upload, poster }),
   });
   if (!response.ok) {
     throw await requestError(

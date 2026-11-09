@@ -65,6 +65,9 @@ const readHeader = mock(
 );
 const deleteObject = mock<(key: string) => Promise<void>>(async () => {});
 const cleanupObject = mock<(key: string) => Promise<void>>(async () => {});
+const putObject = mock<
+  (key: string, body: Uint8Array, type: string) => Promise<void>
+>(async () => {});
 
 mock.module("@/lib/services/r2", () => ({
   createMultipartUpload: createUpload,
@@ -75,6 +78,7 @@ mock.module("@/lib/services/r2", () => ({
   readObjectHeader: readHeader,
   deleteR2Object: deleteObject,
   cleanupR2Object: cleanupObject,
+  putR2Object: putObject,
   r2PublicUrl: (key: string) => `https://media.example.invalid/${key}`,
 }));
 mock.module("@/lib/prisma", () => ({
@@ -123,12 +127,25 @@ function json(url: string, body: unknown) {
 function submission(
   overrides: Record<string, unknown> = {},
   uploadOverrides: Record<string, unknown> = {},
+  extra: Record<string, unknown> = {},
 ) {
   return json("http://localhost/api/videos", {
     metadata: { ...metadata, ...overrides },
     upload: { ...upload, ...uploadOverrides },
+    ...extra,
   });
 }
+
+/** A real 1280×720 PNG frame, as the browser would send it. */
+const sharp = (await import("sharp")).default;
+const POSTER = (
+  await sharp({
+    create: { width: 1280, height: 720, channels: 3, background: "#d6336c" },
+  })
+    .png()
+    .toBuffer()
+).toString("base64");
+const POSTER_KEY = KEY.replace(/\.mp4$/, ".poster.webp");
 
 const allMocks = [
   findUser,
@@ -146,6 +163,7 @@ const allMocks = [
   readHeader,
   deleteObject,
   cleanupObject,
+  putObject,
 ];
 
 beforeEach(() => {
@@ -430,6 +448,40 @@ describe("POST /api/videos", () => {
     expect(response.status).toBe(500);
     expect(await response.text()).not.toContain("database-private-details");
     expect(cleanupObject).toHaveBeenCalledWith(KEY);
+  });
+
+  test("re-encodes the poster frame as WebP beside the video and records its shape", async () => {
+    const response = await POST(submission({}, {}, { poster: POSTER }));
+    expect(response.status).toBe(201);
+    const [key, body, type] = putObject.mock.calls[0];
+    expect(key).toBe(POSTER_KEY);
+    expect(type).toBe("image/webp");
+    const stored = await sharp(body).metadata();
+    expect(stored).toMatchObject({ format: "webp", width: 720, height: 405 });
+    expect(savedData()).toMatchObject({ posterKey: POSTER_KEY });
+    expect(savedData().aspectRatio as number).toBeCloseTo(16 / 9, 2);
+  });
+
+  test("saves the video without a poster when the frame is not an image", async () => {
+    const garbage = Buffer.from("not an image at all").toString("base64");
+    const response = await POST(submission({}, {}, { poster: garbage }));
+    expect(response.status).toBe(201);
+    expect(putObject).not.toHaveBeenCalled();
+    expect(savedData()).toMatchObject({ posterKey: null, aspectRatio: null });
+  });
+
+  test("rejects a malformed poster field before touching storage", async () => {
+    const response = await POST(submission({}, {}, { poster: "<svg>" }));
+    expect(response.status).toBe(400);
+    expect(completeUpload).not.toHaveBeenCalled();
+  });
+
+  test("removes the stored poster too when persistence fails", async () => {
+    saveVideo.mockRejectedValueOnce(new Error("database down"));
+    const response = await POST(submission({}, {}, { poster: POSTER }));
+    expect(response.status).toBe(500);
+    expect(cleanupObject).toHaveBeenCalledWith(KEY);
+    expect(cleanupObject).toHaveBeenCalledWith(POSTER_KEY);
   });
 
   test("rejects multipart bodies; videos no longer pass through the server", async () => {

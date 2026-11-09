@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { clerk } from "@clerk/testing/playwright";
 import { createClerkClient } from "@clerk/nextjs/server";
+import path from "node:path";
 
 const email = `eizoki-submit-${Date.now()}+clerk_test@example.com`;
 const client = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
@@ -221,6 +222,32 @@ test("submits only necessary metadata and confirms community review", async ({
     "is in review",
   );
   await expect(page.getByRole("dialog")).toHaveCount(0, { timeout: 5_000 });
+});
+
+test("captures a poster frame in the browser and sends it with the submission", async ({
+  page,
+}) => {
+  await openSubmission(page);
+  await mockStorage(page);
+  let body: Record<string, unknown> = {};
+  await page.route("**/api/videos", async (route) => {
+    body = route.request().postDataJSON();
+    await route.fulfill({ status: 201, json: receipt() });
+  });
+  await fillSubmission(page);
+  // A real, decodable video this time, so the browser can grab a frame.
+  await page
+    .getByLabel("Upload video", { exact: true })
+    .setInputFiles(path.resolve("tests/fixtures/playback.webm"));
+  await page
+    .getByRole("button", { name: "Submit for review", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Thanks for sharing" }),
+  ).toBeVisible();
+  // Base64 of a WebP file ("RIFF....WEBP"), well under the poster cap.
+  expect(body.poster).toMatch(/^UklGR[A-Za-z0-9+/]+={0,2}$/);
+  expect((body.poster as string).length).toBeLessThan(200_000);
 });
 
 test("fixed tag pills support adding, removing, the three-tag cap, and Escape", async ({

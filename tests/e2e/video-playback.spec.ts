@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import path from "node:path";
+import sharp from "sharp";
 
 const fixture = path.resolve("tests/fixtures/playback.webm");
 
@@ -81,8 +82,13 @@ test("visible videos play without hover, pause outside the viewport, and resume 
     })),
   ).toEqual({ muted: true, loop: true, inline: true });
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  // Far off screen the video is paused, or unloaded entirely to free memory.
   await expect
-    .poll(() => video.evaluate((element: HTMLVideoElement) => element.paused))
+    .poll(() =>
+      video.evaluateAll((elements: HTMLVideoElement[]) =>
+        elements.every((element) => element.paused),
+      ),
+    )
     .toBe(true);
   const lastVideo = page
     .getByRole("button", {
@@ -99,6 +105,67 @@ test("visible videos play without hover, pause outside the viewport, and resume 
   await expect
     .poll(() => video.evaluate((element: HTMLVideoElement) => element.paused))
     .toBe(false);
+});
+
+test("posters fill cards at once while at most three videos load at a time", async ({
+  page,
+}) => {
+  const poster = await sharp({
+    create: { width: 720, height: 540, channels: 3, background: "#d6336c" },
+  })
+    .webp()
+    .toBuffer();
+  await page.route("**/api/videos?*", (route) =>
+    route.fulfill({
+      json: {
+        videos: Array.from({ length: 24 }, (_, index) => ({
+          id: `queued-${index}`,
+          slug: `queued-${index}`,
+          title: `Queued ${index}`,
+          category: "ai-motion-design",
+          tags: [],
+          aspectRatio: 4 / 3,
+          posterUrl: new URL(`/poster-${index}.webp`, route.request().url()).href,
+          videoUrl: new URL(`/slow-${index}.webm`, route.request().url()).href,
+          creator: { name: "Creator" },
+          promptStatus: "unavailable",
+          publishedAt: "2026-11-01T00:00:00.000Z",
+        })),
+        nextCursor: null,
+      },
+    }),
+  );
+  await page.route("**/poster-*.webp", (route) =>
+    route.fulfill({ body: poster, contentType: "image/webp" }),
+  );
+  // Videos never answer, so every slot stays busy.
+  const requested = new Set<string>();
+  await page.route("**/slow-*.webm", (route) => {
+    requested.add(new URL(route.request().url()).pathname);
+  });
+  await page.goto("/");
+
+  const card = page.getByRole("button", {
+    name: "Preview Queued 0 by Creator",
+    exact: true,
+  });
+  await expect(card.locator("img")).toBeVisible();
+  await expect(card).not.toHaveClass(/skeleton-shimmer/);
+  await expect.poll(() => requested.size).toBe(3);
+  await page.waitForTimeout(1_500);
+  expect(requested.size).toBe(3);
+  // The first slots go to the cards highest on screen (the masonry's top row).
+  const topRow = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>("button[aria-label^='Preview Queued']")]
+      .map((card) => ({
+        index: Number(card.getAttribute("aria-label")?.match(/\d+/)?.[0]),
+        top: card.getBoundingClientRect().top,
+      }))
+      .sort((a, b) => a.top - b.top || a.index - b.index)
+      .slice(0, 3)
+      .map(({ index }) => `/slow-${index}.webm`),
+  );
+  expect([...requested].sort()).toEqual(topRow.sort());
 });
 
 test("loaded previews stop shimmering and copied prompts include the video reference", async ({

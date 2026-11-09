@@ -11,7 +11,7 @@ import {
   type PublicSponsor,
   type SponsorshipPlacement,
 } from "@/lib/sponsorships";
-import { playableVideoUrl } from "@/lib/video-delivery";
+import { deliveredVideoUrl } from "./media-url";
 import { requireUser } from "./current-user";
 import {
   fetchWebsiteIcon,
@@ -126,6 +126,7 @@ async function readLiveSponsors(placement: SponsorshipPlacement) {
       iconUrl: true,
       description: true,
       videoUrl: true,
+      videoStorageKey: true,
       startsAt: true,
       endsAt: true,
       sortOrder: true,
@@ -162,11 +163,11 @@ export async function getLiveFeedSponsor(): Promise<PublicFeedSponsor | null> {
     const { live, revalidate } = await readLiveSponsors("FEED_VIDEO");
     cacheLife({ stale: 60, revalidate, expire: 60 * 60 * 24 });
     const row = live[0];
-    return row?.videoUrl
-      ? {
-          ...(await toPublicSponsor(row)),
-          videoUrl: playableVideoUrl(row.videoUrl),
-        }
+    const videoUrl = row
+      ? deliveredVideoUrl({ videoUrl: row.videoUrl, storageKey: row.videoStorageKey })
+      : null;
+    return row && videoUrl
+      ? { ...(await toPublicSponsor(row)), videoUrl }
       : null;
   } catch (error) {
     logReadFailure("Feed sponsor could not be loaded", error);
@@ -336,6 +337,7 @@ export async function listSponsorshipsForAdmin() {
       contactEmail: true,
       iconUrl: true,
       videoUrl: true,
+      videoStorageKey: true,
       startsAt: true,
       endsAt: true,
       reviewNotes: true,
@@ -344,9 +346,9 @@ export async function listSponsorshipsForAdmin() {
       bookedBy: { select: { email: true } },
     },
   });
-  return rows.map((row) => ({
+  return rows.map(({ videoStorageKey, ...row }) => ({
     ...row,
-    videoUrl: row.videoUrl ? playableVideoUrl(row.videoUrl) : null,
+    videoUrl: deliveredVideoUrl({ videoUrl: row.videoUrl, storageKey: videoStorageKey }),
   }));
 }
 

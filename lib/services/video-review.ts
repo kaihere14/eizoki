@@ -2,6 +2,8 @@ import { ApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 import { cleanupUploadedVideo } from "./imagekit";
 import { cleanupR2Object } from "./r2";
+import { cleanupPoster } from "./video-posters";
+import { r2ObjectUrl } from "./media-url";
 import { storedVideoUrl } from "./video-feed";
 
 /** One page of the queue. The admin works through it oldest first. */
@@ -30,6 +32,9 @@ export async function listVideosForReview() {
         creatorProfileUrl: true,
         sourceUrl: true,
         videoUrl: true,
+        storageKey: true,
+        posterKey: true,
+        aspectRatio: true,
         durationSeconds: true,
         promptStatus: true,
         promptText: true,
@@ -42,9 +47,10 @@ export async function listVideosForReview() {
     prisma.video.count({ where }),
   ]);
   return {
-    rows: rows.map((row) => ({
+    rows: rows.map(({ storageKey, posterKey, ...row }) => ({
       ...row,
-      videoUrl: storedVideoUrl(row),
+      videoUrl: storedVideoUrl({ ...row, storageKey }),
+      posterUrl: posterKey ? r2ObjectUrl(posterKey) : undefined,
     })),
     total,
   };
@@ -72,7 +78,12 @@ async function decide(
   reviewStatus: "APPROVED" | "REJECTED",
   reviewNotes: string | null,
   reviewerId: string,
-  extra: { videoUrl?: null; storageKey?: null; imagekitFileId?: null } = {},
+  extra: {
+    videoUrl?: null;
+    storageKey?: null;
+    imagekitFileId?: null;
+    posterKey?: null;
+  } = {},
 ) {
   const now = new Date();
   const { count } = await prisma.video.updateMany({
@@ -118,13 +129,15 @@ export async function rejectVideo(
   // A pending video's file never changes, so reading it first is safe.
   const file = await prisma.video.findUnique({
     where: { id },
-    select: { storageKey: true, imagekitFileId: true },
+    select: { storageKey: true, imagekitFileId: true, posterKey: true },
   });
   await decide(id, "REJECTED", notes?.trim() || null, reviewerId, {
     videoUrl: null,
     storageKey: null,
     imagekitFileId: null,
+    posterKey: null,
   });
   if (file?.storageKey) await cleanupR2Object(file.storageKey);
   else if (file?.imagekitFileId) await cleanupUploadedVideo(file.imagekitFileId);
+  await cleanupPoster(file?.posterKey);
 }

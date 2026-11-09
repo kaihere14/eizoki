@@ -6,6 +6,7 @@ import {
   GetObjectCommand,
   HeadBucketCommand,
   HeadObjectCommand,
+  PutObjectCommand,
   S3Client,
   S3ServiceException,
   UploadPartCommand,
@@ -227,6 +228,26 @@ export async function readObjectHeader(key: string, bytes: number) {
       : new Uint8Array();
   } catch (error) {
     providerError("check", "GetObject", error);
+  }
+}
+
+/** Store a small, server-generated object (a poster frame) in one request. */
+export async function putR2Object(key: string, body: Uint8Array, contentType: string) {
+  const { client, bucket } = config();
+  try {
+    await client.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+        // Keys are never reused for different bytes, so caches may keep them.
+        CacheControl: "public, max-age=31536000, immutable",
+      }),
+    );
+  } catch (error) {
+    logFailure("PutObject", error);
+    throw error;
   }
 }
 

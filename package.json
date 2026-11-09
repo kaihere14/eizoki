@@ -14,7 +14,8 @@
     "db:deploy": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "db:reset": "prisma migrate reset"
+    "db:reset": "prisma migrate reset",
+    "posters:backfill": "bun scripts/backfill-posters.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1164.0",

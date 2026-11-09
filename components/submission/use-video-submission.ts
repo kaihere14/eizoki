@@ -19,6 +19,7 @@ import {
   submissionMetadata,
   type VideoSubmissionReceipt,
 } from "@/lib/video-submission";
+import { captureVideoPoster } from "@/lib/video-poster";
 
 export type SubmissionPhase = "idle" | "uploading" | "saving";
 
@@ -43,6 +44,12 @@ export function useVideoSubmission(
     null,
   );
   const abortRef = useRef<AbortController | null>(null);
+  // Captured as soon as a file is chosen, so it is ready long before the
+  // upload finishes.
+  const posterRef = useRef<{
+    file: File;
+    poster: Promise<string | undefined>;
+  } | null>(null);
 
   useEffect(() => {
     return () => {
@@ -75,6 +82,7 @@ export function useVideoSubmission(
       return;
     }
     discardUpload();
+    posterRef.current = { file, poster: captureVideoPoster(file) };
     setFileError(null);
     setError(null);
     setSelection({ file, url: URL.createObjectURL(file) });
@@ -110,8 +118,12 @@ export function useVideoSubmission(
         uploadedRef.current = { file: selection.file, upload };
       }
       setPhase("saving");
+      const poster =
+        posterRef.current?.file === selection.file
+          ? await posterRef.current.poster
+          : undefined;
       try {
-        const result = await sendVideoSubmission(upload, metadata);
+        const result = await sendVideoSubmission(upload, metadata, poster);
         uploadedRef.current = null;
         setReceipt(result);
         window.dispatchEvent(new Event("eizoki:videos-changed"));

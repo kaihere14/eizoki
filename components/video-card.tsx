@@ -26,8 +26,10 @@ const PLACEHOLDER_RATIOS = [
 ] as const;
 
 /**
- * A masonry card whose shimmer stays visible until the first video frame is
- * decoded, so a slow asset never collapses into an empty or broken card.
+ * A masonry card. Its poster frame shows as soon as it arrives (a few dozen
+ * KB) and the video fades in over it once its first frame is decoded. Cards
+ * without a poster keep their shimmer until then, so a slow asset never
+ * collapses into an empty or broken card.
  */
 export function VideoCard({
   video,
@@ -44,8 +46,11 @@ export function VideoCard({
   onDelete?: (video: VideoMetadata) => void;
 }) {
   const cardRef = useRef<HTMLButtonElement>(null);
-  const { videoRef, shouldLoad } = useViewportVideo(cardRef, paused);
-  const [ready, setReady] = useState(false);
+  const { videoRef, shouldLoad, loadId } = useViewportVideo(cardRef, paused);
+  // The load whose first frame is showing; an unload starts a new load.
+  const [readyLoad, setReadyLoad] = useState(0);
+  const ready = shouldLoad && readyLoad === loadId;
+  const [posterReady, setPosterReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const [ratio, setRatio] = useState<number | undefined>(video.aspectRatio);
   const [copied, setCopied] = useState(false);
@@ -92,9 +97,26 @@ export function VideoCard({
         aria-haspopup="dialog"
         style={{ aspectRatio: ratio ?? placeholderRatio }}
         className={`group relative block w-full cursor-pointer overflow-hidden rounded-xl border border-zinc-200/70 text-left shadow-[0_1px_2px_rgba(9,9,11,0.04)] transition-shadow duration-200 ease-out group-hover:shadow-[0_10px_28px_-14px_rgba(9,9,11,0.2)] ${
-          ready || failed ? "bg-zinc-100" : "skeleton-shimmer"
+          ready || posterReady || failed ? "bg-zinc-100" : "skeleton-shimmer"
         }`}
       >
+        {video.posterUrl && !failed && (
+          // Posters are already 720px WebP; the Next.js optimizer would only
+          // re-process them per request.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={video.posterUrl}
+            alt=""
+            aria-hidden="true"
+            loading="lazy"
+            decoding="async"
+            onLoad={() => setPosterReady(true)}
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
+              posterReady ? "opacity-100" : "opacity-0"
+            }`}
+          />
+        )}
+
         {shouldLoad && (
           <video
             ref={videoRef}
@@ -102,7 +124,7 @@ export function VideoCard({
             muted
             loop
             playsInline
-            preload="metadata"
+            preload="auto"
             aria-hidden="true"
             tabIndex={-1}
             onLoadedMetadata={(event) => {
@@ -111,7 +133,7 @@ export function VideoCard({
                 setRatio(element.videoWidth / element.videoHeight);
               }
             }}
-            onLoadedData={() => setReady(true)}
+            onLoadedData={() => setReadyLoad(loadId)}
             onError={() => setFailed(true)}
             className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
               ready ? "opacity-100" : "opacity-0"

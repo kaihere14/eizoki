@@ -22,6 +22,7 @@ export interface VideoReviewRow {
   creatorProfileUrl: string | null;
   sourceUrl: string | null;
   videoUrl: string;
+  posterUrl?: string;
   durationSeconds: number | null;
   promptStatus: "ORIGINAL" | "RECONSTRUCTED" | "UNAVAILABLE";
   promptText: string | null;
@@ -161,6 +162,7 @@ function VideoItem({ row, position }: { row: VideoReviewRow; position: number })
       <div className="grid gap-4 sm:grid-cols-[minmax(0,240px)_minmax(0,1fr)] sm:gap-5">
         <video
           src={row.videoUrl}
+          poster={row.posterUrl}
           controls
           muted
           playsInline
