@@ -39,21 +39,35 @@ describe("video reference", () => {
     });
   });
   test.each([undefined, "", "  \n"])(
-    "copies only the reference instruction when the prompt is %j",
+    "frames only the reference video when the prompt is %j",
     (prompt) => {
-      expect(
-        promptWithVideoReference(prompt, "video-1", "https://eizoki.com"),
-      ).toBe(
-        "Please use this video as the reference:\nhttps://eizoki.com/api/videos/video-1/reference",
+      const copied = promptWithVideoReference(
+        prompt,
+        "video-1",
+        "https://eizoki.com",
+      );
+      expect(copied).toStartWith(
+        "Use the reference video below as a template",
+      );
+      expect(copied).not.toContain("--- Template prompt ---");
+      expect(copied).toEndWith(
+        "--- Reference video ---\nhttps://eizoki.com/api/videos/video-1/reference",
       );
     },
   );
-  test("preserves the prompt and appends the website's stable reference URL", () => {
+  test("frames the unedited prompt as a template and asks which project it is for", () => {
     const prompt = "  Cinematic motion.\n";
-    expect(
-      promptWithVideoReference(prompt, "video-1", "https://eizoki.com"),
-    ).toBe(
-      `${prompt}\n\nPlease use this video as the reference:\nhttps://eizoki.com/api/videos/video-1/reference`,
+    const copied = promptWithVideoReference(
+      prompt,
+      "video-1",
+      "https://eizoki.com",
+    );
+    expect(copied).toStartWith(
+      "Use the prompt and reference video below as a template",
+    );
+    expect(copied).toContain("If I haven't, ask me");
+    expect(copied).toContain(
+      `--- Template prompt ---\n${prompt}\n\n--- Reference video ---\nhttps://eizoki.com/api/videos/video-1/reference`,
     );
   });
   test("redirects to the uploaded video and checks approval and publication time", async () => {
