@@ -1,5 +1,5 @@
 import { findPublicVideoReference } from "@/lib/services/video-reference";
-import { playableVideoUrl } from "@/lib/video-delivery";
+import { deliveredVideoUrl } from "@/lib/services/media-url";
 
 const HEADERS = { "Cache-Control": "no-store" };
 
@@ -10,14 +10,15 @@ export async function GET(
   const { id } = await context.params;
   try {
     const video = await findPublicVideoReference(id);
-    if (!video?.videoUrl)
+    const url = video ? deliveredVideoUrl(video) : null;
+    if (!url)
       return Response.json(
         { error: "Video not found." },
         { status: 404, headers: HEADERS },
       );
     return new Response(null, {
       status: 307,
-      headers: { ...HEADERS, Location: playableVideoUrl(video.videoUrl) },
+      headers: { ...HEADERS, Location: url },
     });
   } catch {
     return Response.json(

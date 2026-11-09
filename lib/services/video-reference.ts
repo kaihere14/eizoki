@@ -7,6 +7,6 @@ export async function findPublicVideoReference(id: string) {
       reviewStatus: "APPROVED",
       publishedAt: { not: null, lte: new Date() },
     },
-    select: { videoUrl: true },
+    select: { videoUrl: true, storageKey: true },
   });
 }
