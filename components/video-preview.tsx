@@ -9,7 +9,7 @@ import {
   promptWithVideoReference,
   videoReferencePath,
 } from "@/lib/video-reference";
-import { ArrowUpRight, Check, Copy, Film } from "lucide-react";
+import { ArrowUpRight, Check, Copy, Film, X } from "lucide-react";
 import {
   CATEGORY_LABELS,
   formatAspectRatio,
@@ -185,9 +185,16 @@ export function VideoPreview({
   onClose,
 }: VideoPreviewProps) {
   const [copied, setCopied] = useState(false);
+  const closeRef = useRef<HTMLButtonElement>(null);
   const [mediaRatio, setMediaRatio] = useState<number | undefined>(
     video.aspectRatio,
   );
+
+  // Start keyboard focus inside the preview, on the way out. Once only: the
+  // effect below re-runs whenever the parent passes a new onClose.
+  useEffect(() => {
+    closeRef.current?.focus({ preventScroll: true });
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -290,6 +297,22 @@ export function VideoPreview({
         onClick={onClose}
         className="fixed inset-0 bg-white/60 backdrop-blur-[6px]"
       />
+
+      {/* Clicking outside closes too, but on a phone the video and details
+          fill the screen and leave nowhere to click; this is always there. */}
+      <button
+        ref={closeRef}
+        type="button"
+        onClick={onClose}
+        aria-label="Close preview"
+        style={{
+          top: "max(0.75rem, env(safe-area-inset-top))",
+          right: "max(0.75rem, env(safe-area-inset-right))",
+        }}
+        className="fixed z-20 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-zinc-200/80 bg-white/90 text-zinc-600 shadow-[0_1px_2px_rgba(9,9,11,0.06),0_4px_12px_-4px_rgba(9,9,11,0.18)] backdrop-blur-md outline-none transition-[background-color,color,transform] duration-150 hover:bg-white hover:text-zinc-900 focus-visible:ring-2 focus-visible:ring-brand active:scale-[0.96] sm:h-9 sm:w-9"
+      >
+        <X className="h-4 w-4" strokeWidth={2} />
+      </button>
 
       <div
         className="relative flex min-h-full w-full flex-col lg:h-[100dvh] lg:min-h-0 lg:flex-row lg:items-center"

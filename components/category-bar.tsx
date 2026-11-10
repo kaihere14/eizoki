@@ -10,15 +10,23 @@ import {
   useState,
   type KeyboardEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ChevronDown } from "lucide-react";
 import { CATEGORY_LABELS, type VideoCategory } from "@/lib/videos";
 import { fitCategories, type CategoryMetrics } from "@/lib/category-fit";
 
 type PillRect = { x: number; y: number; width: number; height: number };
+/** Where the menu hangs, in viewport pixels: under "Show more", right-aligned. */
+type MenuAnchor = { top: number; right: number; maxHeight: number };
 type Item = { key: string; label: string; category?: VideoCategory };
 const ALL_KEY = "all";
-const SPRING = { type: "spring", stiffness: 430, damping: 32, mass: 0.7 } as const;
+const SPRING = {
+  type: "spring",
+  stiffness: 430,
+  damping: 32,
+  mass: 0.7,
+} as const;
 
 const PILL_CLASS =
   "relative inline-flex h-8 shrink-0 items-center rounded-full px-3.5 text-[12.5px] font-medium whitespace-nowrap";
@@ -53,6 +61,7 @@ export function CategoryBar({
   const [metrics, setMetrics] = useState<CategoryMetrics | null>(null);
   const [pillRect, setPillRect] = useState<PillRect | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState<MenuAnchor | null>(null);
 
   const rowRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
@@ -96,7 +105,11 @@ export function CategoryBar({
     // The items move between the row and the menu on resize; start over.
     if (available !== availableRef.current) setMenuOpen(false);
     availableRef.current = available;
-    setMetrics({ widths: sizes.slice(0, -1), more: sizes.at(-1) ?? 0, available });
+    setMetrics({
+      widths: sizes.slice(0, -1),
+      more: sizes.at(-1) ?? 0,
+      available,
+    });
   }, []);
 
   // Re-fit when the viewport resizes, the labels change, or fonts load.
@@ -137,6 +150,40 @@ export function CategoryBar({
     return () => observer.disconnect();
   }, [measurePill]);
 
+  const anchorMenu = useCallback(() => {
+    const rect = moreRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const top = rect.bottom + 8;
+    setMenuAnchor({
+      top,
+      right: document.documentElement.clientWidth - rect.right,
+      maxHeight: Math.max(160, Math.min(320, window.innerHeight - top - 16)),
+    });
+  }, []);
+
+  function openMenu() {
+    anchorMenu();
+    setMenuOpen(true);
+  }
+
+  // The menu is fixed to the viewport, so follow the button while the page
+  // scrolls (before the bar sticks) or resizes.
+  useEffect(() => {
+    if (!menuOpen) return;
+    let frame = 0;
+    const follow = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(anchorMenu);
+    };
+    window.addEventListener("scroll", follow, { passive: true });
+    window.addEventListener("resize", follow);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", follow);
+      window.removeEventListener("resize", follow);
+    };
+  }, [menuOpen, anchorMenu]);
+
   // Close on any press outside the control and its menu.
   useEffect(() => {
     if (!menuOpen) return;
@@ -173,8 +220,7 @@ export function CategoryBar({
 
   function onMenuKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     const options = Array.from(
-      menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ??
-        [],
+      menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [],
     );
     const current = options.indexOf(document.activeElement as HTMLElement);
     const focusAt = (index: number) =>
@@ -202,7 +248,9 @@ export function CategoryBar({
         closeMenu();
         break;
       case "Tab":
-        setMenuOpen(false);
+        // The menu lives at the end of <body>; return focus to its button.
+        event.preventDefault();
+        closeMenu();
         break;
     }
   }
@@ -257,7 +305,12 @@ export function CategoryBar({
               aria-hidden="true"
               initial={false}
               animate={pillRect}
-              transition={{ x: SPRING, y: SPRING, width: SPRING, height: SPRING }}
+              transition={{
+                x: SPRING,
+                y: SPRING,
+                width: SPRING,
+                height: SPRING,
+              }}
               className="absolute top-0 left-0 z-0 rounded-full border border-white/25 bg-[linear-gradient(180deg,var(--brand-400)_0%,var(--brand-500)_55%,var(--brand-600)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.45),inset_0_-1px_1px_rgba(0,0,0,0.18),0_1px_2px_var(--brand-shadow),0_4px_10px_-3px_var(--brand-shadow-strong)]"
             />
           )}
@@ -304,11 +357,11 @@ export function CategoryBar({
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
                 aria-controls={menuOpen ? menuId : undefined}
-                onClick={() => setMenuOpen((open) => !open)}
+                onClick={() => (menuOpen ? setMenuOpen(false) : openMenu())}
                 onKeyDown={(event) => {
                   if (event.key === "ArrowDown" && !menuOpen) {
                     event.preventDefault();
-                    setMenuOpen(true);
+                    openMenu();
                   }
                 }}
                 className={`group cursor-pointer active:scale-[0.97] transition-transform duration-150 ${MORE_CLASS}`}
@@ -326,44 +379,63 @@ export function CategoryBar({
                 />
               </button>
 
-              <AnimatePresence>
-                {menuOpen && (
-                  <motion.div
-                    ref={menuRef}
-                    id={menuId}
-                    role="menu"
-                    aria-label="More categories"
-                    onKeyDown={onMenuKeyDown}
-                    initial={
-                      reduceMotion
-                        ? { opacity: 0 }
-                        : { opacity: 0, y: -4, scale: 0.97 }
-                    }
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={
-                      reduceMotion
-                        ? { opacity: 0 }
-                        : { opacity: 0, y: -2, scale: 0.98 }
-                    }
-                    transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}
-                    style={{ transformOrigin: "top right" }}
-                    className="absolute top-full right-0 z-50 mt-2 max-h-[min(60vh,320px)] w-max min-w-44 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-zinc-200 bg-white p-1.5 shadow-[0_8px_24px_rgba(9,9,11,0.12)]"
-                  >
-                    {hidden.map((item) => (
-                      <button
-                        key={item.key}
-                        type="button"
-                        role="menuitem"
-                        tabIndex={-1}
-                        onClick={() => select(item)}
-                        className="flex w-full cursor-pointer items-center rounded-[10px] px-3 py-2 text-left text-[12.5px] font-medium text-zinc-600 outline-none transition-colors duration-150 hover:bg-zinc-100 hover:text-zinc-900 focus-visible:bg-zinc-100 focus-visible:text-zinc-900"
+              {/* Portalled to <body> and fixed: inside the sticky bar the menu
+                  shares the bar's stacking context, and mobile Safari paints
+                  the feed's playing videos over it. translateZ gives it its
+                  own compositing layer above them. */}
+              {createPortal(
+                <AnimatePresence>
+                  {menuOpen && menuAnchor && (
+                    <div
+                      key="menu"
+                      className="fixed z-[45] [transform:translateZ(0)]"
+                      style={{ top: menuAnchor.top, right: menuAnchor.right }}
+                    >
+                      <motion.div
+                        ref={menuRef}
+                        id={menuId}
+                        role="menu"
+                        aria-label="More categories"
+                        onKeyDown={onMenuKeyDown}
+                        initial={
+                          reduceMotion
+                            ? { opacity: 0 }
+                            : { opacity: 0, y: -4, scale: 0.97 }
+                        }
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={
+                          reduceMotion
+                            ? { opacity: 0 }
+                            : { opacity: 0, y: -2, scale: 0.98 }
+                        }
+                        transition={{
+                          duration: 0.16,
+                          ease: [0.23, 1, 0.32, 1],
+                        }}
+                        style={{
+                          transformOrigin: "top right",
+                          maxHeight: menuAnchor.maxHeight,
+                        }}
+                        className="w-max min-w-44 max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain rounded-2xl border border-zinc-200 bg-white p-1.5 shadow-[0_8px_24px_rgba(9,9,11,0.12)]"
                       >
-                        {item.label}
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                        {hidden.map((item) => (
+                          <button
+                            key={item.key}
+                            type="button"
+                            role="menuitem"
+                            tabIndex={-1}
+                            onClick={() => select(item)}
+                            className="flex w-full cursor-pointer items-center rounded-[10px] px-3 py-2 text-left text-[12.5px] font-medium text-zinc-600 outline-none transition-colors duration-150 hover:bg-zinc-100 hover:text-zinc-900 focus-visible:bg-zinc-100 focus-visible:text-zinc-900"
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </motion.div>
+                    </div>
+                  )}
+                </AnimatePresence>,
+                document.body,
+              )}
             </div>
           )}
         </div>
