@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useEffectEvent, useRef, useState } from "react";
 import { Film, LoaderCircle, RefreshCw } from "lucide-react";
 import { DeleteVideoDialog } from "@/components/delete-video-dialog";
 import { SkeletonFeed } from "@/components/skeleton-feed";
@@ -16,6 +16,13 @@ import {
 import type { VideoCategory, VideoMetadata } from "@/lib/videos";
 
 type FeedStatus = "loading" | "ready" | "error";
+
+/**
+ * How far below the viewport the end of the feed may be when the next page is
+ * requested. Roughly two rows of cards, so new videos arrive before the reader
+ * reaches the bottom.
+ */
+const PREFETCH_MARGIN = "0px 0px 1200px 0px";
 
 function mergeVideos(current: VideoMetadata[], incoming: VideoMetadata[]) {
   const seen = new Set(current.map((video) => video.id));
@@ -46,6 +53,9 @@ export function VideoFeed({
     initialPage?.sponsor ?? null,
   );
   const [deleting, setDeleting] = useState<VideoMetadata | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  // Guards against a second request before `isLoadingMore` re-renders.
+  const loadingMoreRef = useRef(false);
   // Only reveals the control; the API re-checks admin in Postgres.
   const isAdmin = useEizokiUser().user?.isAdmin === true;
 
@@ -87,7 +97,8 @@ export function VideoFeed({
   }
 
   async function loadMore() {
-    if (!nextCursor || isLoadingMore) return;
+    if (!nextCursor || loadingMoreRef.current) return;
+    loadingMoreRef.current = true;
     setIsLoadingMore(true);
     setLoadMoreError(null);
     try {
@@ -101,9 +112,33 @@ export function VideoFeed({
           : "More videos could not be loaded.",
       );
     } finally {
+      loadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
   }
+
+  const loadMoreNearEnd = useEffectEvent(() => {
+    void loadMore();
+  });
+
+  // Requests the next page as the end of the feed nears the viewport. The
+  // observer is rebuilt for each cursor, and a new observer reports straight
+  // away, so a page too short to fill the screen keeps loading. A failed page
+  // stops this until the reader retries.
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !nextCursor || loadMoreError) return;
+    if (typeof IntersectionObserver === "undefined") return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) loadMoreNearEnd();
+      },
+      { rootMargin: PREFETCH_MARGIN },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [nextCursor, loadMoreError, videos.length]);
 
   if (status === "loading" && videos.length === 0) {
     return <SkeletonFeed spacious />;
@@ -200,27 +235,35 @@ export function VideoFeed({
       </div>
 
       {nextCursor && (
-        <div className="mt-6 flex flex-col items-center gap-3">
-          {loadMoreError && (
-            <p role="alert" className="text-[12px] text-red-600">
-              {loadMoreError}
-            </p>
-          )}
-          <button
-            type="button"
-            onClick={loadMore}
-            disabled={isLoadingMore}
-            className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-5 py-2.5 text-[12.5px] font-medium text-zinc-700 shadow-[0_1px_2px_rgba(9,9,11,0.04)] outline-none transition-colors hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-wait disabled:opacity-60"
-          >
-            {isLoadingMore ? (
-              <>
+        <div
+          ref={sentinelRef}
+          className="mt-6 flex min-h-10 flex-col items-center gap-3"
+        >
+          {loadMoreError ? (
+            <>
+              <p role="alert" className="text-[12px] text-red-600">
+                {loadMoreError}
+              </p>
+              <button
+                type="button"
+                onClick={loadMore}
+                disabled={isLoadingMore}
+                className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-5 py-2.5 text-[12.5px] font-medium text-zinc-700 shadow-[0_1px_2px_rgba(9,9,11,0.04)] outline-none transition-colors hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-wait disabled:opacity-60"
+              >
+                Try again
+              </button>
+            </>
+          ) : (
+            isLoadingMore && (
+              <p
+                role="status"
+                className="inline-flex items-center gap-2 text-[12.5px] text-zinc-500"
+              >
                 <LoaderCircle className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
-                Loading videos…
-              </>
-            ) : (
-              "Load more videos"
-            )}
-          </button>
+                Loading more videos…
+              </p>
+            )
+          )}
         </div>
       )}
 
