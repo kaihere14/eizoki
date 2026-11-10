@@ -66,6 +66,9 @@ mock.module("@/lib/prisma", () => ({
   },
 }));
 const { GET } = await import("@/app/api/videos/mine/route");
+// Outside a Next.js request there is no cache to refresh; record the call.
+const invalidatePublicVideos = mock(() => {});
+mock.module("@/lib/services/public-videos", () => ({ invalidatePublicVideos }));
 const { DELETE } = await import("@/app/api/videos/[id]/route");
 const fetchSpy = spyOn(globalThis, "fetch");
 const errorSpy = spyOn(console, "error").mockImplementation(() => {});
@@ -204,6 +207,8 @@ describe("private video management", () => {
     expect(deleteR2).toHaveBeenCalledWith("videos/owner/file.mp4");
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(deleteMany).toHaveBeenCalledTimes(1);
+    // Video, category and tag pages and the sitemap drop the deleted video.
+    expect(invalidatePublicVideos).toHaveBeenCalled();
   });
   test("keeps the database entry when R2 removal fails", async () => {
     findOwned.mockResolvedValue({

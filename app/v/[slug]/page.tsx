@@ -70,14 +70,14 @@ function videoDescription(video: VideoMetadata) {
       ? ""
       : " Read and copy the prompt behind it.";
   return snippet(
-    `${video.title} by ${video.creator.name}: a hand-picked ${CATEGORY_LABELS[video.category]} video${tools}.${prompt}`,
+    `${video.title} by ${video.creator.name}${tools}, hand-picked for the ${CATEGORY_LABELS[video.category]} collection on Eizoki.${prompt}`,
   );
 }
 
 function pageTitle(video: VideoMetadata) {
-  const kind =
-    video.promptStatus === "unavailable" ? "video" : "video & prompt";
-  return `${video.title} — ${CATEGORY_LABELS[video.category]} ${kind} | ${SITE_NAME}`;
+  const noun = CATEGORY_LANDINGS[video.category].videoNoun;
+  const kind = video.promptStatus === "unavailable" ? noun : `${noun} & prompt`;
+  return `${video.title} — ${kind} | ${SITE_NAME}`;
 }
 
 export async function generateMetadata({

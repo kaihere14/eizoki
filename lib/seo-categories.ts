@@ -18,6 +18,8 @@ export type CategoryLanding = {
   headingLead: string;
   /** Highlighted words of the heading: the main search phrase. */
   headingAccent: string;
+  /** What one video in the category is called in titles: "AI launch video". */
+  videoNoun: string;
   /** One sentence under the heading. */
   summary: string;
   /** Longer copy shown under the feed. */
@@ -29,6 +31,7 @@ export const CATEGORY_LANDINGS: Record<VideoCategory, CategoryLanding> = {
   "ai-motion-design": {
     category: "ai-motion-design",
     path: "/ai-motion-design",
+    videoNoun: "AI motion design",
     title: "AI Motion Design Examples, Videos & Prompts | Eizoki",
     description:
       "Hand-picked AI motion design: AI motion graphics, abstract loops and title sequences, each credited to its creator, with prompts when they were shared.",
@@ -61,6 +64,7 @@ export const CATEGORY_LANDINGS: Record<VideoCategory, CategoryLanding> = {
   "launch-videos": {
     category: "launch-videos",
     path: "/launch-videos",
+    videoNoun: "AI launch video",
     title: "AI Product Launch Video Examples & Prompts | Eizoki",
     description:
       "Product launch videos and promo films made with AI video tools. Study the pacing, UI reveals and prompts behind launch films that work.",
@@ -88,6 +92,7 @@ export const CATEGORY_LANDINGS: Record<VideoCategory, CategoryLanding> = {
   "3d-experiments": {
     category: "3d-experiments",
     path: "/3d-experiments",
+    videoNoun: "AI 3D animation",
     title: "AI 3D Animation & 3D Motion Experiments | Eizoki",
     description:
       "AI 3D animation, material studies, simulations and 3D motion experiments, hand-curated and credited to their creators, with prompts when shared.",
@@ -110,6 +115,7 @@ export const CATEGORY_LANDINGS: Record<VideoCategory, CategoryLanding> = {
   "ui-motion": {
     category: "ui-motion",
     path: "/ui-motion",
+    videoNoun: "UI motion design",
     title: "UI Motion Design & App Animation Examples | Eizoki",
     description:
       "UI motion design examples: app animations, interface transitions and product UI films, hand-picked and credited, with prompts when available.",
@@ -132,6 +138,7 @@ export const CATEGORY_LANDINGS: Record<VideoCategory, CategoryLanding> = {
   "kinetic-typography": {
     category: "kinetic-typography",
     path: "/kinetic-typography",
+    videoNoun: "kinetic typography",
     title: "Kinetic Typography Examples & AI Text Animation | Eizoki",
     description:
       "Kinetic typography and text animation examples, including AI-assisted type in motion, curated by hand and credited to each creator.",
@@ -154,6 +161,7 @@ export const CATEGORY_LANDINGS: Record<VideoCategory, CategoryLanding> = {
   "cinematic-stories": {
     category: "cinematic-stories",
     path: "/cinematic-stories",
+    videoNoun: "cinematic AI video",
     title: "AI Cinematic Videos & AI Short Films | Eizoki",
     description:
       "Cinematic AI videos and short films: AI storytelling, film-look shots and visual narratives, hand-curated and credited to their creators.",
@@ -176,6 +184,7 @@ export const CATEGORY_LANDINGS: Record<VideoCategory, CategoryLanding> = {
   "creative-experiments": {
     category: "creative-experiments",
     path: "/creative-experiments",
+    videoNoun: "experimental AI video",
     title: "Experimental AI Video & Generative Art Films | Eizoki",
     description:
       "Experimental AI video, generative art and creative experiments: glitch, audio-reactive and analog-look motion, hand-picked and credited.",

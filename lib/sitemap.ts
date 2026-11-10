@@ -28,6 +28,11 @@ function newest(dates: (string | undefined)[]) {
   return sorted.at(-1);
 }
 
+/** A sitemap entry; lastModified is left out rather than invented. */
+function page(path: string, lastModified?: string) {
+  return { url: absoluteUrl(path), ...(lastModified ? { lastModified } : {}) };
+}
+
 export function buildSitemap({
   videos,
   tags,
@@ -38,44 +43,43 @@ export function buildSitemap({
   tags: string[];
 }): MetadataRoute.Sitemap {
   const staticPages = Object.values(PUBLIC_PAGES)
-    .filter((page) => page.path !== "/blog")
-    .map((page) => ({
-      url: absoluteUrl(page.path),
-      ...(page.path === "/"
-        ? { lastModified: newest(videos.map((video) => video.updatedAt)) }
-        : {}),
-    }));
+    .filter((item) => item.path !== "/blog")
+    .map((item) =>
+      page(
+        item.path,
+        item.path === "/" ? newest(videos.map((video) => video.updatedAt)) : undefined,
+      ),
+    );
 
-  const categories = CATEGORY_LANDING_LIST.map((landing) => ({
-    url: absoluteUrl(landing.path),
-    lastModified: newest(
-      videos
-        .filter((video) => video.category === landing.category)
-        .map((video) => video.updatedAt),
+  const categories = CATEGORY_LANDING_LIST.map((landing) =>
+    page(
+      landing.path,
+      newest(
+        videos
+          .filter((video) => video.category === landing.category)
+          .map((video) => video.updatedAt),
+      ),
     ),
-  }));
+  );
 
-  const tagPages = tags.map((tag) => ({
-    url: absoluteUrl(tagPath(tag)),
-    lastModified: newest(
-      videos.filter((video) => video.tags.includes(tag)).map((video) => video.updatedAt),
+  const tagPages = tags.map((tag) =>
+    page(
+      tagPath(tag),
+      newest(
+        videos.filter((video) => video.tags.includes(tag)).map((video) => video.updatedAt),
+      ),
     ),
-  }));
+  );
 
   const blog = [
-    {
-      url: absoluteUrl("/blog"),
-      lastModified: newest(BLOG_POSTS.map((post) => post.updatedAt ?? post.publishedAt)),
-    },
-    ...BLOG_POSTS.map((post) => ({
-      url: absoluteUrl(blogPostPath(post.slug)),
-      lastModified: post.updatedAt ?? post.publishedAt,
-    })),
+    page("/blog", newest(BLOG_POSTS.map((post) => post.updatedAt ?? post.publishedAt))),
+    ...BLOG_POSTS.map((post) =>
+      page(blogPostPath(post.slug), post.updatedAt ?? post.publishedAt),
+    ),
   ];
 
   const videoPages = videos.map((video) => ({
-    url: absoluteUrl(videoPath(video.slug)),
-    lastModified: video.updatedAt,
+    ...page(videoPath(video.slug), video.updatedAt),
     // Google's video sitemap needs a thumbnail; videos without a poster are
     // still listed as pages.
     ...(video.posterUrl
@@ -102,13 +106,5 @@ export function buildSitemap({
       : {}),
   }));
 
-  // Drop undefined lastModified so no date is ever invented.
-  return [...staticPages, ...categories, ...tagPages, ...blog, ...videoPages].map(
-    (entry) =>
-      entry.lastModified === undefined
-        ? Object.fromEntries(
-            Object.entries(entry).filter(([key]) => key !== "lastModified"),
-          ) as MetadataRoute.Sitemap[number]
-        : entry,
-  );
+  return [...staticPages, ...categories, ...tagPages, ...blog, ...videoPages];
 }
