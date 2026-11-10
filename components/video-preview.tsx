@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { videoPath } from "@/lib/seo";
 import { AVATAR_IMAGES } from "@/lib/user";
 import { FavouriteButton } from "@/components/favourite-button";
 import { useViewportVideo } from "@/components/use-viewport-video";
@@ -16,7 +18,7 @@ import {
   formatDuration,
   formatPublishedAt,
   originalVideoUrl,
-  type PromptStatus,
+  PROMPT_STATUS_BADGES,
   type VideoMetadata,
 } from "@/lib/videos";
 
@@ -151,24 +153,6 @@ function MiniVideo({ video }: { video: VideoMetadata }) {
   );
 }
 
-const PROMPT_STATUS: Record<
-  PromptStatus,
-  { label: string; className: string }
-> = {
-  original: {
-    label: "Original",
-    className: "border-emerald-200/80 bg-emerald-50 text-emerald-700",
-  },
-  reconstructed: {
-    label: "Reconstructed",
-    className: "border-amber-200/80 bg-amber-50 text-amber-700",
-  },
-  unavailable: {
-    label: "Not shared",
-    className: "border-zinc-300/70 bg-white/80 text-zinc-500",
-  },
-};
-
 const PLATFORM_LABELS: Record<string, string> = {
   x: "X",
   instagram: "Instagram",
@@ -236,7 +220,7 @@ export function VideoPreview({
     }
   };
 
-  const status = PROMPT_STATUS[video.promptStatus];
+  const status = PROMPT_STATUS_BADGES[video.promptStatus];
   const hasPrompt = Boolean(video.promptText?.trim());
   const profileUrl = video.creator.xProfileUrl ?? video.creator.profileUrl;
   const isXProfile =
@@ -334,7 +318,13 @@ export function VideoPreview({
         >
           <div className="mx-auto w-full max-w-[520px] lg:mx-0">
             <h2 className="font-display text-[21px] font-semibold leading-[1.12] tracking-tight text-zinc-900 sm:text-[23px]">
-              {video.title}
+              {/* The video's own page: a stable link to share, and one crawlers can follow. */}
+              <Link
+                href={videoPath(video.slug)}
+                className="rounded-sm outline-none hover:underline hover:decoration-zinc-300 hover:underline-offset-4 focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                {video.title}
+              </Link>
             </h2>
             {video.description && (
               <p className="mt-2.5 text-[13px] leading-relaxed text-zinc-500">

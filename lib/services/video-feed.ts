@@ -158,7 +158,7 @@ export function videoDetails(row: VideoFeedRow): Omit<VideoMetadata, "videoUrl">
 }
 
 /** Only approved videos whose publication time has passed are public. */
-function publicVideoWhere(now = new Date()) {
+export function publicVideoWhere(now = new Date()) {
   return {
     reviewStatus: "APPROVED",
     publishedAt: { not: null, lte: now },

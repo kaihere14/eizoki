@@ -16,6 +16,7 @@ import { Navbar } from "@/components/navbar";
 import { NavbarSponsors } from "@/components/navbar-sponsors";
 import { LoginModalProvider } from "@/components/login-modal";
 import { ThemeProvider } from "@/components/theme-provider";
+import { SiteFooter } from "@/components/site-footer";
 import { UserProvider } from "@/components/user-provider";
 import { Analytics } from "@vercel/analytics/next";
 
@@ -76,6 +77,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <LoginModalProvider>
                 <Navbar sponsorSlot={<NavbarSponsors />} />
                 {children}
+                <SiteFooter />
               </LoginModalProvider>
             </UserProvider>
           </ClerkProvider>

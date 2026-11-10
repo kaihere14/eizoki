@@ -1,0 +1,214 @@
+<template>
+  <style>
+    @font-face {
+      font-family: "Geist";
+      src: url("assets/fonts/Geist-Medium.woff2") format("woff2");
+      font-weight: 500;
+    }
+    #root {
+      position: absolute;
+      inset: 0;
+      background: #ffffff;
+      overflow: hidden;
+      font-family: "Geist", sans-serif;
+      font-weight: 500;
+      color: #09090b;
+    }
+    .hk-line {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1920px;
+      height: 1080px;
+    }
+    /* Line 1: one big line, centred. */
+    #hk-l1 {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.26em;
+      font-size: 120px;
+      line-height: 1;
+      letter-spacing: -0.035em;
+    }
+    #hk-l1 span {
+      display: inline-block;
+      opacity: 0;
+      padding-bottom: 0.08em;
+    }
+    /* Line 2: words hug a 16:9 card; positions measured for Geist Medium 92 px. */
+    .hk-word {
+      position: absolute;
+      top: 494px;
+      font-size: 92px;
+      line-height: 92px;
+      letter-spacing: -0.035em;
+      white-space: nowrap;
+      opacity: 0;
+    }
+    #hk-ai {
+      right: 1381px;
+      text-align: right;
+    }
+    #hk-worth {
+      left: 1027px;
+    }
+    #hk-stage {
+      position: absolute;
+      left: 583px;
+      top: 428px;
+      width: 400px;
+      height: 225px;
+      perspective: 1400px;
+    }
+    .hk-card {
+      position: absolute;
+      inset: 0;
+      border-radius: 22px;
+      overflow: hidden;
+      background: #f4f4f5;
+      box-shadow: 0 22px 48px rgba(9, 9, 11, 0.2);
+      opacity: 0;
+    }
+    .hk-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    #hk-shadow {
+      position: absolute;
+      left: 583px;
+      top: 428px;
+      width: 400px;
+      height: 225px;
+      border-radius: 22px;
+      box-shadow: 0 22px 48px rgba(9, 9, 11, 0.24);
+      opacity: 0;
+    }
+    #hk-fill {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      clip-path: inset(428px 1137px 427px 783px round 22px);
+    }
+    #hk-fill img {
+      position: absolute;
+      left: -80px;
+      top: -200px;
+      width: 2400px;
+      height: 1600px;
+      object-fit: cover;
+    }
+  </style>
+  <div
+    id="root"
+    data-composition-id="hook"
+    data-width="1920"
+    data-height="1080"
+    data-composition-variables='[{"id":"left","type":"string","label":"Word before card","default":"AI video"},{"id":"right","type":"string","label":"Words after card","default":"worth watching?"}]'
+  >
+    <div id="hk-l1" class="hk-line" data-layout-allow-overflow>
+      <span>Still</span>
+      <span>searching</span>
+      <span>for</span>
+    </div>
+
+    <div id="hk-l2" class="hk-line" data-layout-allow-overflow>
+      <span id="hk-ai" class="hk-word" data-var-text="left">AI video</span>
+      <span id="hk-worth" class="hk-word" data-var-text="right">worth watching?</span>
+
+      <div id="hk-shadow"></div>
+      <div id="hk-stage" data-layout-allow-overflow data-layout-allow-overlap>
+        <div class="hk-card hk-back"><img src="assets/posters/p10.webp" alt="" /></div>
+        <div class="hk-card hk-back"><img src="assets/posters/p18.webp" alt="" /></div>
+        <div class="hk-card hk-back"><img src="assets/posters/p36.webp" alt="" /></div>
+        <div class="hk-card hk-back"><img src="assets/posters/p15.webp" alt="" /></div>
+        <div class="hk-card hk-back"><img src="assets/posters/p23.webp" alt="" /></div>
+        <div id="hk-hero" class="hk-card"><img src="assets/posters/p32.webp" alt="" /></div>
+      </div>
+      <div id="hk-fill" data-layout-allow-overflow>
+        <img src="assets/img/window-view.jpg" alt="" />
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const tl = gsap.timeline({ paused: true });
+      const BLUE = "#3074fe";
+      const INK = "#09090b";
+
+      // Line 1: each word lands out of a soft blue blur, a touch large, and settles to ink.
+      const w1 = document.querySelectorAll("#hk-l1 span");
+      w1.forEach((w, i) => {
+        tl.fromTo(
+          w,
+          { opacity: 0, filter: "blur(18px)", color: BLUE, scale: 1.14 },
+          { opacity: 1, filter: "blur(0px)", color: INK, scale: 1, duration: 0.42, ease: "expo.out" },
+          0.06 + i * 0.17,
+        );
+      });
+      tl.to(w1, { opacity: 0, filter: "blur(10px)", scale: 0.96, duration: 0.18, ease: "power2.in", stagger: 0.03 }, 0.98);
+
+      // Line 2: the card lands, and the words slide out from behind it.
+      tl.fromTo(
+        "#hk-hero",
+        { opacity: 0, scale: 0.7, filter: "blur(10px)" },
+        { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.45, ease: "expo.out" },
+        1.24,
+      );
+      tl.fromTo(
+        "#hk-ai",
+        { opacity: 0, x: 70, filter: "blur(8px)" },
+        { opacity: 1, x: 0, filter: "blur(0px)", duration: 0.42, ease: "expo.out" },
+        1.32,
+      );
+      tl.fromTo(
+        "#hk-worth",
+        { opacity: 0, x: -70, filter: "blur(8px)" },
+        { opacity: 1, x: 0, filter: "blur(0px)", duration: 0.42, ease: "expo.out" },
+        1.38,
+      );
+
+      // The card flips edge-on...
+      tl.to("#hk-hero", { rotationY: 90, duration: 0.14, ease: "power2.in" }, 1.76);
+      tl.set("#hk-hero", { opacity: 0 }, 1.9);
+
+      // ...and opens into a fanned stack.
+      const fan = [-14, -7, 7, 14, 21];
+      const backs = document.querySelectorAll(".hk-back");
+      backs.forEach((c, i) => {
+        tl.fromTo(
+          c,
+          { opacity: 0, rotationY: -90, rotation: 0, transformOrigin: "50% 100%" },
+          { opacity: 1, rotationY: 0, rotation: fan[i], duration: 0.36, ease: "back.out(1.4)" },
+          1.9 + i * 0.035,
+        );
+      });
+      // Front card: a window onto the peak, opening from its centre line.
+      tl.fromTo(
+        "#hk-fill",
+        { clipPath: "inset(428px 1137px 427px 783px round 22px)" },
+        { clipPath: "inset(428px 937px 427px 583px round 22px)", duration: 0.22, ease: "power3.out" },
+        1.9,
+      );
+      tl.fromTo("#hk-shadow", { opacity: 0 }, { opacity: 1, duration: 0.2 }, 1.92);
+      // The opening stack makes room: the words ease apart.
+      tl.to("#hk-ai", { x: -64, duration: 0.4, ease: "power3.out" }, 1.9);
+      tl.to("#hk-worth", { x: 64, duration: 0.4, ease: "power3.out" }, 1.9);
+
+      // Hand-off: the front card grows past the frame into the cabin.
+      tl.to(["#hk-ai", "#hk-worth"], { opacity: 0, filter: "blur(8px)", duration: 0.15, ease: "power2.in" }, 2.2);
+      tl.to(backs, { opacity: 0, scale: 0.9, duration: 0.18, ease: "power2.in", stagger: 0.02 }, 2.22);
+      tl.to("#hk-shadow", { opacity: 0, duration: 0.15 }, 2.22);
+      tl.to(
+        "#hk-fill",
+        { clipPath: "inset(0px 0px 0px 0px round 0px)", duration: 0.36, ease: "power3.inOut" },
+        2.2,
+      );
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["hook"] = tl;
+    })();
+  </script>
+</template>

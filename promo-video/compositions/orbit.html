@@ -1,0 +1,186 @@
+<template>
+  <style>
+    @font-face {
+      font-family: "Geist";
+      src: url("assets/fonts/Geist-Regular.woff2") format("woff2");
+      font-weight: 400;
+    }
+    @font-face {
+      font-family: "Geist";
+      src: url("assets/fonts/Geist-Medium.woff2") format("woff2");
+      font-weight: 500;
+    }
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #ffffff;
+      font-family: "Geist", sans-serif;
+      color: #09090b;
+    }
+    .ob-word {
+      position: absolute;
+      top: 512px;
+      font-size: 44px;
+      line-height: 56px;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      opacity: 0;
+    }
+    #ob-left {
+      right: calc(1920px - 960px + 160px + 52px);
+    }
+    #ob-right {
+      left: calc(960px + 160px + 52px);
+    }
+    .ob-card {
+      position: absolute;
+      border-radius: 20px;
+      padding: 5px;
+      background: #ffffff;
+      border: 2px solid #3074fe;
+      box-shadow: 0 14px 34px rgba(9, 9, 11, 0.14);
+    }
+    .ob-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      border-radius: 14px;
+    }
+    #ob-hero {
+      left: 800px;
+      top: 450px;
+      width: 320px;
+      height: 180px;
+      opacity: 0;
+      z-index: 5;
+    }
+    .ob-orb {
+      left: 0;
+      top: 0;
+      width: 232px;
+      height: 131px;
+      opacity: 0;
+    }
+    #ob-label {
+      position: absolute;
+      left: 0;
+      top: 656px;
+      width: 1920px;
+      display: flex;
+      justify-content: center;
+      z-index: 6;
+    }
+    #ob-label span {
+      display: block;
+      background: #3074fe;
+      color: #ffffff;
+      font-weight: 500;
+      font-size: 34px;
+      line-height: 34px;
+      padding: 9px 18px 11px;
+      border-radius: 8px;
+      letter-spacing: -0.01em;
+      opacity: 0;
+    }
+  </style>
+  <div
+    id="root"
+    data-composition-id="orbit"
+    data-width="1920"
+    data-height="1080"
+    data-composition-variables='[{"id":"left","type":"string","label":"Word before card","default":"Hand-picks"},{"id":"right","type":"string","label":"Words after card","default":"the best"},{"id":"label","type":"string","label":"Label","default":"AI motion"}]'
+  >
+    <span id="ob-left" class="ob-word" data-var-text="left">Hand-picks</span>
+    <span id="ob-right" class="ob-word" data-var-text="right">the best</span>
+
+    <div class="ob-card ob-orb"><img src="assets/posters/p21.webp" alt="" /></div>
+    <div class="ob-card ob-orb"><img src="assets/posters/p24.webp" alt="" /></div>
+    <div class="ob-card ob-orb"><img src="assets/posters/p30.webp" alt="" /></div>
+    <div class="ob-card ob-orb"><img src="assets/posters/p28.webp" alt="" /></div>
+    <div class="ob-card ob-orb"><img src="assets/posters/p17.webp" alt="" /></div>
+    <div class="ob-card ob-orb"><img src="assets/posters/p37.webp" alt="" /></div>
+
+    <div id="ob-hero" class="ob-card"><img src="assets/posters/p11.webp" alt="" /></div>
+    <div id="ob-label"><span data-var-text="label">AI motion</span></div>
+  </div>
+  <script>
+    (function () {
+      const tl = gsap.timeline({ paused: true });
+      const D = 1.8;
+      const orbs = Array.from(document.querySelectorAll(".ob-orb"));
+      const base = [15, 75, 135, 195, 255, 315];
+      const RX = 660;
+      const RY = 370;
+      const expoOut = (x) => (x >= 1 ? 1 : 1 - Math.pow(2, -10 * x));
+
+      // Every card position is a pure function of scene time T.
+      function place(T) {
+        let r = T < 0.6 ? 0.42 + 0.58 * expoOut(T / 0.6) : 1;
+        let ang = 30 * T;
+        if (T > 1.36) {
+          const k = Math.pow((T - 1.36) / (D - 1.36), 3);
+          r *= 1 + 1.25 * k;
+          ang += 150 * k;
+        }
+        const fade = Math.min(1, T / 0.22);
+        orbs.forEach((el, i) => {
+          const a = ((base[i] + ang) * Math.PI) / 180;
+          const s = Math.sin(a);
+          gsap.set(el, {
+            x: 960 + RX * r * Math.cos(a) - 116,
+            y: 540 + RY * r * s - 65,
+            scale: 0.86 + 0.2 * s,
+            rotation: -6 * Math.cos(a),
+            opacity: fade,
+            zIndex: s > 0 ? 4 : 2,
+          });
+        });
+      }
+      const clock = { t: 0 };
+      tl.fromTo(
+        clock,
+        { t: 0 },
+        { t: D, duration: D, ease: "none", onUpdate: () => place(clock.t) },
+        0,
+      );
+
+      // Words and the hero card.
+      tl.fromTo(
+        "#ob-hero",
+        { opacity: 0, scale: 0.8, filter: "blur(8px)" },
+        { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.4, ease: "expo.out" },
+        0.02,
+      );
+      tl.fromTo(
+        "#ob-left",
+        { opacity: 0, filter: "blur(10px)" },
+        { opacity: 1, filter: "blur(0px)", duration: 0.2, ease: "power3.out" },
+        0.1,
+      );
+      tl.fromTo(
+        "#ob-right",
+        { opacity: 0, filter: "blur(10px)" },
+        { opacity: 1, filter: "blur(0px)", duration: 0.2, ease: "power3.out" },
+        0.22,
+      );
+      tl.fromTo(
+        "#ob-label span",
+        { opacity: 0, scale: 0.55, y: -10 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.38, ease: "back.out(1.7)" },
+        0.5,
+      );
+
+      // Hand-off: everything clears as the orbit flings outward.
+      tl.to(
+        ["#ob-left", "#ob-right", "#ob-label span", "#ob-hero"],
+        { opacity: 0, filter: "blur(8px)", scale: 0.94, duration: 0.18, ease: "power2.in", stagger: 0.02 },
+        1.45,
+      );
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["orbit"] = tl;
+    })();
+  </script>
+</template>

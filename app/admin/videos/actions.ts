@@ -3,6 +3,7 @@
 import { refresh } from "next/cache";
 import { ApiError } from "@/lib/api-error";
 import { requireUser } from "@/lib/services/current-user";
+import { invalidatePublicVideos } from "@/lib/services/public-videos";
 import { approveVideo, rejectVideo } from "@/lib/services/video-review";
 
 export type VideoReviewState = { error: string | null };
@@ -20,7 +21,9 @@ async function review(run: (reviewerId: string) => Promise<void>) {
     });
     return { error: "The change could not be saved. Please try again." };
   }
-  // The feed reads Postgres directly, so only the queue needs re-rendering.
+  // The feed reads Postgres directly; the indexable pages and sitemap are
+  // cached, so they are refreshed along with the queue.
+  invalidatePublicVideos();
   refresh();
   return { error: null };
 }

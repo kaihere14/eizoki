@@ -1,0 +1,116 @@
+<template>
+  <style>
+    @font-face {
+      font-family: "Geist";
+      src: url("assets/fonts/Geist-Medium.woff2") format("woff2");
+      font-weight: 500;
+    }
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #ffffff;
+      font-family: "Geist", sans-serif;
+    }
+    #cb-view {
+      position: absolute;
+      left: -80px;
+      top: -200px;
+      width: 2400px;
+      height: 1600px;
+      object-fit: cover;
+    }
+    #cb-cabin {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1920px;
+      height: 1440px;
+    }
+    #cb-lockup {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1920px;
+      height: 1080px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 26px;
+    }
+    #cb-logo {
+      width: 128px;
+      height: 128px;
+      object-fit: contain;
+      opacity: 0;
+    }
+    #cb-word {
+      font-size: 112px;
+      line-height: 1;
+      font-weight: 500;
+      letter-spacing: -0.03em;
+      color: #ffffff;
+      text-shadow: 0 2px 24px rgba(9, 9, 11, 0.28);
+      padding-bottom: 14px;
+      clip-path: inset(0 100% 0 0);
+    }
+    #cb-white {
+      position: absolute;
+      inset: 0;
+      background: #ffffff;
+      opacity: 0;
+    }
+  </style>
+  <div id="root" data-composition-id="cabin" data-width="1920" data-height="1080">
+    <img id="cb-view" src="assets/img/window-view.jpg" alt="" data-layout-allow-overflow />
+    <img id="cb-cabin" src="assets/img/cabin-cutout.webp" alt="" data-layout-allow-overflow />
+    <div id="cb-lockup" data-layout-allow-overflow>
+      <img id="cb-logo" src="assets/img/eizoki-logo.webp" alt="eizoki logo" />
+      <span id="cb-word">eizoki</span>
+    </div>
+    <div id="cb-white"></div>
+  </div>
+  <script>
+    (function () {
+      const tl = gsap.timeline({ paused: true });
+
+      // The peak drifts past the glass: the train is moving.
+      tl.fromTo("#cb-view", { x: 0 }, { x: -190, duration: 2, ease: "none" }, 0);
+
+      // Camera: start inside the left pane, pull back to the compartment.
+      // Window panes span x 330-1458, y 212-738 in the cabin image.
+      tl.fromTo(
+        "#cb-cabin",
+        { transformOrigin: "0px 0px", scale: 4.2, x: 960 - 4.2 * 632, y: 540 - 4.2 * 475 },
+        { scale: 1.15, x: 960 - 1.15 * 894, y: 540 - 1.15 * 475, duration: 0.85, ease: "power3.inOut" },
+        0,
+      );
+
+      // Logo lands centred in the window, then the wordmark wipes in.
+      tl.fromTo(
+        "#cb-logo",
+        { opacity: 0, scale: 0.5, rotation: -25, filter: "blur(10px)" },
+        { opacity: 1, scale: 1, rotation: 0, filter: "blur(0px)", duration: 0.45, ease: "expo.out" },
+        0.5,
+      );
+      tl.fromTo(
+        "#cb-word",
+        { clipPath: "inset(0% 100% 0% 0%)" },
+        { clipPath: "inset(0% 0% 0% 0%)", duration: 0.4, ease: "power4.out" },
+        0.72,
+      );
+
+      // Hand-off: push through the window into white.
+      tl.to(
+        "#cb-cabin",
+        { scale: 2.4, x: 960 - 2.4 * 894, y: 540 - 2.4 * 475, duration: 0.3, ease: "power3.in" },
+        1.68,
+      );
+      tl.to("#cb-lockup", { scale: 1.6, opacity: 0, filter: "blur(12px)", duration: 0.26, ease: "power3.in" }, 1.7);
+      tl.to("#cb-white", { opacity: 1, duration: 0.14, ease: "power2.in" }, 1.84);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["cabin"] = tl;
+    })();
+  </script>
+</template>

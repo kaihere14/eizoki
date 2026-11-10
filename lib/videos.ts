@@ -60,6 +60,25 @@ export const CATEGORY_LABELS: Record<VideoCategory, string> = {
   "creative-experiments": "Creative Experiments",
 };
 
+/** How each prompt label reads and looks, on the preview and the video page. */
+export const PROMPT_STATUS_BADGES: Record<
+  PromptStatus,
+  { label: string; className: string }
+> = {
+  original: {
+    label: "Original",
+    className: "border-emerald-200/80 bg-emerald-50 text-emerald-700",
+  },
+  reconstructed: {
+    label: "Reconstructed",
+    className: "border-amber-200/80 bg-amber-50 text-amber-700",
+  },
+  unavailable: {
+    label: "Not shared",
+    className: "border-zinc-300/70 bg-white/80 text-zinc-500",
+  },
+};
+
 export const CATEGORY_GRADIENTS: Record<VideoCategory, string> = {
   "ai-motion-design": "from-[#0b1220] via-[#1d4ed8] to-[#38bdf8]",
   "launch-videos": "from-[#1c1917] via-[#9a3412] to-[#f59e0b]",

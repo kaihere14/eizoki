@@ -1,0 +1,225 @@
+<template>
+  <style>
+    @font-face {
+      font-family: "Geist";
+      src: url("assets/fonts/Geist-Regular.woff2") format("woff2");
+      font-weight: 400;
+    }
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #ffffff;
+      font-family: "Geist", sans-serif;
+      color: #09090b;
+    }
+    #st-field {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+    }
+    .st-card {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 272px;
+      height: 153px;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #f4f4f5;
+      box-shadow: 0 14px 30px rgba(9, 9, 11, 0.16);
+      opacity: 0;
+    }
+    .st-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .st-word {
+      position: absolute;
+      left: 0;
+      top: 512px;
+      width: 1920px;
+      text-align: center;
+      font-size: 44px;
+      line-height: 56px;
+      letter-spacing: -0.01em;
+      opacity: 0;
+      z-index: 3;
+    }
+    #st-fill {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      z-index: 50;
+      clip-path: inset(540px 960px 540px 960px round 18px);
+    }
+    #st-fill {
+      background: #0c0c0e;
+    }
+    #st-fill img {
+      position: absolute;
+      left: 176px;
+      top: -999.33px;
+      width: 1568px;
+      height: 3817.92px;
+    }
+  </style>
+  <div
+    id="root"
+    data-composition-id="streams"
+    data-width="1920"
+    data-height="1080"
+    data-composition-variables='[{"id":"wordA","type":"string","label":"First word","default":"Motion design"},{"id":"wordB","type":"string","label":"Second word","default":"Launch videos"}]'
+  >
+    <div id="st-field" data-layout-allow-overflow data-layout-allow-overlap>
+      <div class="st-card st-a"><img src="assets/posters/p19.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p41.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p13.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p25.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p5.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p40.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p16.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p35.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p6.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p39.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p27.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p2.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p14.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p22.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p3.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p44.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p9.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p38.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p42.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p1.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p25.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p5.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p40.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p16.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p35.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p6.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p39.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p27.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p2.webp" alt="" /></div>
+      <div class="st-card st-a"><img src="assets/posters/p14.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p10.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p18.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p36.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p15.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p23.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p32.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p21.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p24.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p30.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p28.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p17.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p37.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p11.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p41.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p19.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p25.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p40.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p35.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p6.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p13.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p36.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p15.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p23.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p32.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p21.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p24.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p30.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p28.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p17.webp" alt="" /></div>
+      <div class="st-card st-b"><img src="assets/posters/p37.webp" alt="" /></div>
+    </div>
+    <div id="st-a" class="st-word" data-var-text="wordA">Motion design</div>
+    <div id="st-b" class="st-word" data-var-text="wordB">Launch videos</div>
+    <div id="st-fill" data-layout-allow-overflow>
+      <img src="assets/ui/feed-long.webp" alt="" />
+    </div>
+  </div>
+  <script>
+    (function () {
+      const tl = gsap.timeline({ paused: true });
+
+      // Seeded generator: the same streams on every render.
+      let seed = 20261110;
+      const rnd = () => ((seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296);
+
+      // Each card flies straight through on a diagonal, in lanes either side of the words.
+      function stream(cards, angleDeg, t0, spacing) {
+        const a = (angleDeg * Math.PI) / 180;
+        const dx = Math.cos(a), dy = Math.sin(a);
+        const px = -dy, py = dx;
+        cards.forEach((el, i) => {
+          const side = i % 2 === 0 ? 1 : -1;
+          const off = side * (165 + rnd() * 300);
+          const depth = 0.62 + rnd() * 0.6; // nearer cards are bigger and faster
+          const span = 1250 + 250 * depth;
+          const cx = 960 + px * off, cy = 540 + py * off;
+          let start = t0 + i * spacing + rnd() * 0.03;
+          let dur = 1.15 - 0.3 * depth;
+          let x0 = cx - dx * span - 136, y0 = cy - dy * span - 76;
+          let s0 = depth * 0.8;
+          if (start < 0) {
+            // Already in flight when the scene opens: begin part-way along the path.
+            const k = -start / dur;
+            x0 += (2 * dx * span) * k; y0 += (2 * dy * span) * k; s0 += depth * 0.3 * k;
+            dur += start; start = 0;
+          }
+          tl.fromTo(
+            el,
+            {
+              x: x0,
+              y: y0,
+              scale: s0,
+              rotation: (rnd() - 0.5) * 16,
+              opacity: 1,
+              zIndex: Math.round(depth * 10),
+            },
+            {
+              x: cx + dx * span - 136,
+              y: cy + dy * span - 76,
+              scale: depth * 1.1,
+              duration: dur,
+              ease: "none",
+            },
+            start,
+          );
+          tl.set(el, { opacity: 0 }, start + dur);
+        });
+      }
+      stream(Array.from(document.querySelectorAll(".st-a")), 32, -0.55, 0.05);
+      stream(Array.from(document.querySelectorAll(".st-b")), -32, 0.92, 0.04);
+
+      // Words swap on one stage.
+      tl.fromTo("#st-a", { opacity: 0, filter: "blur(10px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.2, ease: "power3.out" }, 0.12);
+      tl.to("#st-a", { opacity: 0, filter: "blur(8px)", duration: 0.15, ease: "power2.in" }, 0.98);
+      tl.fromTo("#st-b", { opacity: 0, filter: "blur(10px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.2, ease: "power3.out" }, 1.1);
+      tl.to("#st-b", { opacity: 0, filter: "blur(8px)", duration: 0.15, ease: "power2.in" }, 1.74);
+
+      // Hand-off: one golden card flies in, then grows into the landscape.
+      tl.fromTo(
+        "#st-fill",
+        { clipPath: "inset(1060px 0px 0px 1740px round 18px)" },
+        { clipPath: "inset(450px 420px 450px 1180px round 16px)", duration: 0.3, ease: "expo.out" },
+        1.62,
+      );
+      tl.fromTo(
+        "#st-fill",
+        { clipPath: "inset(450px 420px 450px 1180px round 16px)" },
+        { clipPath: "inset(144px 176px 54px 176px round 24px)", duration: 0.34, ease: "power3.inOut", immediateRender: false },
+        1.92,
+      );
+
+      // The streams dissolve as the golden card takes over the frame.
+      tl.fromTo("#st-field", { opacity: 1 }, { opacity: 0, duration: 0.28, ease: "power1.in" }, 1.86);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["streams"] = tl;
+    })();
+  </script>
+</template>

@@ -1,0 +1,29 @@
+{
+ "docH": 4675,
+ "card": {
+  "i": 18,
+  "x": 738.671875,
+  "y": 314.375,
+  "w": 442.65625,
+  "h": 248.984375,
+  "label": "Preview Opal: Better Marketing (Sound Redesign) by bruno"
+ },
+ "heart": {
+  "x": 1145.328125,
+  "y": 322.375,
+  "width": 28,
+  "height": 28
+ },
+ "copy": {
+  "x": 1113.328125,
+  "y": 322.375,
+  "width": 28,
+  "height": 28
+ },
+ "modalCopy": {
+  "x": 1592,
+  "y": 283.75,
+  "width": 264,
+  "height": 41.5
+ }
+}

@@ -1,0 +1,306 @@
+<template>
+  <style>
+    @font-face {
+      font-family: "Geist";
+      src: url("assets/fonts/Geist-Regular.woff2") format("woff2");
+      font-weight: 400;
+    }
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #ffffff;
+      font-family: "Geist", sans-serif;
+      color: #09090b;
+    }
+    .pd-line {
+      position: absolute;
+      left: 0;
+      top: 52px;
+      width: 1920px;
+      text-align: center;
+      font-size: 44px;
+      line-height: 56px;
+      letter-spacing: -0.01em;
+      opacity: 0;
+    }
+    /* The product window: the real eizoki site at 1920 x 1080, shown at 0.8167. */
+    #pd-win {
+      position: absolute;
+      left: 176px;
+      top: 144px;
+      width: 1568px;
+      height: 882px;
+      border-radius: 24px;
+      overflow: hidden;
+      background: #0c0c0e;
+    }
+    #pd-shadow {
+      position: absolute;
+      left: 176px;
+      top: 144px;
+      width: 1568px;
+      height: 882px;
+      border-radius: 24px;
+      box-shadow: 0 30px 70px rgba(9, 9, 11, 0.28);
+      opacity: 0;
+    }
+    #pd-cam {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1920px;
+      height: 1080px;
+    }
+    #pd-feed {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1920px;
+      height: 4675px;
+    }
+    .pd-crop {
+      position: absolute;
+      overflow: hidden;
+      opacity: 0;
+    }
+    .pd-crop img {
+      position: absolute;
+      width: 1920px;
+      height: 1080px;
+    }
+    #pd-hover {
+      left: 724.67px;
+      top: 300.38px;
+      width: 470.66px;
+      height: 277px;
+    }
+    #pd-hover img {
+      left: -724.67px;
+      top: -300.38px;
+    }
+    #pd-saved {
+      left: 1143.33px;
+      top: 320.38px;
+      width: 32px;
+      height: 32px;
+      border-radius: 16px;
+    }
+    #pd-saved img {
+      left: -1143.33px;
+      top: -320.38px;
+    }
+    #pd-burst {
+      position: absolute;
+      left: 1159.33px;
+      top: 336.38px;
+      width: 0;
+      height: 0;
+    }
+    #pd-ring {
+      position: absolute;
+      left: -12px;
+      top: -12px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 1px solid rgba(48, 116, 254, 0.5);
+      opacity: 0;
+    }
+    .pd-dot {
+      position: absolute;
+      border-radius: 50%;
+      background: #3074fe;
+      opacity: 0;
+    }
+    #pd-modal {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1920px;
+      height: 1080px;
+      opacity: 0;
+    }
+    #pd-copied {
+      left: 1590px;
+      top: 281.75px;
+      width: 268px;
+      height: 45.5px;
+    }
+    #pd-copied img {
+      left: -1590px;
+      top: -281.75px;
+    }
+    #pd-cursor {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 26px;
+      height: 38px;
+      opacity: 0;
+      z-index: 20;
+    }
+  </style>
+  <div
+    id="root"
+    data-composition-id="product"
+    data-width="1920"
+    data-height="1080"
+    data-composition-variables='[{"id":"l1","type":"string","label":"Line 1","default":"Discover it."},{"id":"l2","type":"string","label":"Line 2","default":"Save it."},{"id":"l3","type":"string","label":"Line 3","default":"Prompt it."}]'
+  >
+    <div id="pd-1" class="pd-line" data-var-text="l1">Discover it.</div>
+    <div id="pd-2" class="pd-line" data-var-text="l2">Save it.</div>
+    <div id="pd-3" class="pd-line" data-var-text="l3">Prompt it.</div>
+
+    <div id="pd-shadow"></div>
+    <div id="pd-win" data-layout-allow-overflow>
+      <div id="pd-cam" data-layout-allow-overflow data-layout-allow-overlap>
+        <img id="pd-feed" src="assets/ui/feed-long.webp" alt="eizoki feed" />
+        <div id="pd-hover" class="pd-crop"><img src="assets/ui/hover.webp" alt="" /></div>
+        <div id="pd-saved" class="pd-crop"><img src="assets/ui/saved.webp" alt="" /></div>
+        <div id="pd-burst">
+          <div id="pd-ring"></div>
+          <div class="pd-dot" style="width: 3px; height: 3px; left: -1.5px; top: -1.5px"></div>
+          <div class="pd-dot" style="width: 2px; height: 2px; left: -1px; top: -1px"></div>
+          <div class="pd-dot" style="width: 3px; height: 3px; left: -1.5px; top: -1.5px"></div>
+          <div class="pd-dot" style="width: 2px; height: 2px; left: -1px; top: -1px"></div>
+          <div class="pd-dot" style="width: 2px; height: 2px; left: -1px; top: -1px"></div>
+          <div class="pd-dot" style="width: 3px; height: 3px; left: -1.5px; top: -1.5px"></div>
+          <div class="pd-dot" style="width: 2px; height: 2px; left: -1px; top: -1px"></div>
+        </div>
+        <img id="pd-modal" src="assets/ui/modal.webp" alt="eizoki video preview" />
+        <div id="pd-copied" class="pd-crop"><img src="assets/ui/modal-copied.webp" alt="" /></div>
+        <svg id="pd-cursor" viewBox="0 0 26 38" aria-hidden="true">
+          <path
+            d="M2 2 L2 30 L9 23.5 L13.5 34 L18 32 L13.6 21.8 L23 21.8 Z"
+            fill="#09090b"
+            stroke="#ffffff"
+            stroke-width="2"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const tl = gsap.timeline({ paused: true });
+      const D = 6.0;
+      const S0 = 1568 / 1920;
+      // Camera framing: world = the 1920 x 1080 site; window centre = 784, 441.
+      const cam = (z, cx, cy) => {
+        const s = S0 * z;
+        const x = Math.min(0, Math.max(1568 - 1920 * s, 784 - s * cx));
+        const y = Math.min(0, Math.max(882 - 1080 * s, 441 - s * cy));
+        return { scale: s, x, y };
+      };
+      const HEART = [1159.33, 336.38];
+      const COPY = [1724, 304.5];
+      const CARD = [985, 470];
+
+      // Times of the three clicks and of each state change.
+      const T_HOVER = 2.0, T_SAVE = 3.02, T_OPEN = 4.16, T_COPY = 5.22;
+
+      // Cursor stops [time, x, y]; between stops it glides on a gentle eased arc.
+      const CUR = [
+        [1.3, 1560, 1010],
+        [2.1, CARD[0], CARD[1]],
+        [2.35, CARD[0], CARD[1]],
+        [2.97, HEART[0] + 1, HEART[1] + 2],
+        [3.55, HEART[0] + 1, HEART[1] + 2],
+        [4.1, CARD[0], CARD[1]],
+        [4.5, CARD[0], CARD[1]],
+        [5.16, COPY[0] - 40, COPY[1] + 1],
+        [D, COPY[0] - 40, COPY[1] + 1],
+      ];
+      // Camera zoom stops [time, zoom].
+      const ZOOM = [
+        [0, 1], [2.0, 1], [2.95, 2.4], [3.55, 2.4], [4.15, 1.06], [4.5, 1.06], [5.3, 1.9], [D, 1.9],
+      ];
+      const ease = (u) => (u <= 0 ? 0 : u >= 1 ? 1 : u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
+      const seg = (keys, t) => {
+        if (t <= keys[0][0]) return [0, 0];
+        for (let k = 0; k < keys.length - 1; k++) {
+          if (t <= keys[k + 1][0]) return [k, (t - keys[k][0]) / (keys[k + 1][0] - keys[k][0])];
+        }
+        return [keys.length - 2, 1];
+      };
+      function cursorAt(t) {
+        const [k, u] = seg(CUR, t);
+        const a = CUR[k], b = CUR[k + 1];
+        const e = ease(u);
+        let x = a[1] + (b[1] - a[1]) * e;
+        let y = a[2] + (b[2] - a[2]) * e;
+        // A hand never moves in a ruler line: bow the path a little.
+        const dx = b[1] - a[1], dy = b[2] - a[2];
+        const len = Math.hypot(dx, dy);
+        if (len > 1) {
+          const bow = Math.sin(Math.PI * e) * len * 0.08;
+          x += (-dy / len) * bow;
+          y += (dx / len) * bow;
+        }
+        return [x, y];
+      }
+      function zoomAt(t) {
+        const [k, u] = seg(ZOOM, t);
+        return ZOOM[k][1] + (ZOOM[k + 1][1] - ZOOM[k][1]) * ease(u);
+      }
+      // A click: a quick press and a softer release.
+      const press = (t, at) => {
+        const d = t - at;
+        if (d < -0.07 || d > 0.2) return 1;
+        return d < 0 ? 1 - 0.18 * ((d + 0.07) / 0.07) : 0.82 + 0.18 * Math.min(1, d / 0.2);
+      };
+
+      gsap.set("#pd-cam", { transformOrigin: "0px 0px" });
+      gsap.set("#pd-cursor", { transformOrigin: "2px 2px" });
+
+      // Every camera and cursor position is a pure function of scene time.
+      // The camera tracks the cursor 0.12 s behind it, so it follows the hand.
+      function render(t) {
+        const [cx, cy] = cursorAt(t);
+        const [lx, ly] = cursorAt(Math.max(0, t - 0.12));
+        gsap.set("#pd-cam", cam(zoomAt(t), lx, ly));
+        gsap.set("#pd-cursor", {
+          x: cx,
+          y: cy,
+          scale: press(t, T_SAVE) * press(t, T_OPEN) * press(t, T_COPY),
+          opacity: Math.max(0, Math.min(1, (t - 1.3) / 0.25)),
+        });
+      }
+      const clock = { t: 0 };
+      tl.fromTo(clock, { t: 0 }, { t: D, duration: D, ease: "none", onUpdate: () => render(clock.t) }, 0);
+
+      tl.fromTo("#pd-shadow", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "power2.out" }, 0);
+
+      // 1 — Discover: an easy scroll down the real feed, settling at the top.
+      tl.fromTo("#pd-feed", { y: -1400 }, { y: 0, duration: 1.8, ease: "power2.inOut" }, 0.05);
+      tl.fromTo("#pd-1", { opacity: 0, filter: "blur(10px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.25, ease: "power3.out" }, 0.25);
+      tl.to("#pd-1", { opacity: 0, filter: "blur(8px)", duration: 0.2, ease: "power2.in" }, 1.85);
+
+      // 2 — Save: hover the card, glide to its heart, click.
+      tl.fromTo("#pd-hover", { opacity: 0 }, { opacity: 1, duration: 0.15, ease: "power1.out" }, T_HOVER);
+      tl.fromTo("#pd-saved", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(2.2)" }, T_SAVE);
+      // The product's own save burst: a ring and seven particles.
+      tl.fromTo("#pd-ring", { opacity: 0.8, scale: 0.4 }, { opacity: 0, scale: 1.5, duration: 0.45, ease: "power1.out" }, T_SAVE);
+      const P = [[-11, -10], [0, -14], [11, -10], [-14, 1], [14, 1], [-9, 12], [9, 12]];
+      document.querySelectorAll(".pd-dot").forEach((d, i) => {
+        tl.fromTo(d, { x: 0, y: 0, opacity: 1, scale: 1 }, { x: P[i][0], y: P[i][1], opacity: 0, scale: 0.4, duration: 0.5, ease: "power1.out" }, T_SAVE + i * 0.01);
+      });
+      tl.fromTo("#pd-2", { opacity: 0, filter: "blur(10px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.25, ease: "power3.out" }, 2.1);
+      tl.to("#pd-2", { opacity: 0, filter: "blur(8px)", duration: 0.2, ease: "power2.in" }, 3.6);
+
+      // 3 — Prompt: click the card to open it, glide to Copy prompt, click.
+      tl.fromTo("#pd-modal", { opacity: 0, scale: 0.985 }, { opacity: 1, scale: 1, duration: 0.2, ease: "power2.out" }, T_OPEN + 0.04);
+      tl.fromTo("#pd-copied", { opacity: 0 }, { opacity: 1, duration: 0.12, ease: "power1.out" }, T_COPY);
+      tl.fromTo("#pd-3", { opacity: 0, filter: "blur(10px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.25, ease: "power3.out" }, 3.85);
+
+      // Hand-off to the end card's white.
+      tl.to("#pd-3", { opacity: 0, filter: "blur(8px)", duration: 0.2, ease: "power2.in" }, 5.72);
+      tl.to(["#pd-win", "#pd-shadow"], { scale: 0.95, opacity: 0, filter: "blur(10px)", duration: 0.26, ease: "power3.in" }, 5.72);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["product"] = tl;
+    })();
+  </script>
+</template>
