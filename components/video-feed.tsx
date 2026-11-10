@@ -13,7 +13,7 @@ import {
   FEED_SPONSOR_POSITION,
   type PublicFeedSponsor,
 } from "@/lib/sponsorships";
-import type { VideoMetadata } from "@/lib/videos";
+import type { VideoCategory, VideoMetadata } from "@/lib/videos";
 
 type FeedStatus = "loading" | "ready" | "error";
 
@@ -22,7 +22,14 @@ function mergeVideos(current: VideoMetadata[], incoming: VideoMetadata[]) {
   return [...current, ...incoming.filter((video) => !seen.has(video.id))];
 }
 
-export function VideoFeed({ initialPage }: { initialPage?: VideoFeedPage } = {}) {
+export function VideoFeed({
+  initialPage,
+  category,
+}: {
+  initialPage?: VideoFeedPage;
+  /** Shows only this category. Remount (via `key`) to switch categories. */
+  category?: VideoCategory;
+} = {}) {
   const [videos, setVideos] = useState<VideoMetadata[]>(initialPage?.videos ?? []);
   const [nextCursor, setNextCursor] = useState<string | null>(
     initialPage?.nextCursor ?? null,
@@ -46,7 +53,7 @@ export function VideoFeed({ initialPage }: { initialPage?: VideoFeedPage } = {})
     if (initialPage && refreshToken === 0) return;
     const controller = new AbortController();
 
-    fetchVideoFeed({ signal: controller.signal })
+    fetchVideoFeed({ category, signal: controller.signal })
       .then((page) => {
         setVideos(page.videos);
         setNextCursor(page.nextCursor);
@@ -64,7 +71,7 @@ export function VideoFeed({ initialPage }: { initialPage?: VideoFeedPage } = {})
       });
 
     return () => controller.abort();
-  }, [refreshToken, initialPage]);
+  }, [refreshToken, initialPage, category]);
 
   // A successful submission asks the feed to pick up the new record.
   useEffect(() => {
@@ -84,7 +91,7 @@ export function VideoFeed({ initialPage }: { initialPage?: VideoFeedPage } = {})
     setIsLoadingMore(true);
     setLoadMoreError(null);
     try {
-      const page = await fetchVideoFeed({ cursor: nextCursor });
+      const page = await fetchVideoFeed({ cursor: nextCursor, category });
       setVideos((current) => mergeVideos(current, page.videos));
       setNextCursor(page.nextCursor);
     } catch (cause) {
@@ -132,7 +139,9 @@ export function VideoFeed({ initialPage }: { initialPage?: VideoFeedPage } = {})
           <Film className="h-5 w-5" strokeWidth={1.5} />
         </span>
         <p className="mt-4 text-[14px] font-medium text-zinc-800">
-          The collection is waiting for its first piece
+          {category
+            ? "Nothing in this category yet"
+            : "The collection is waiting for its first piece"}
         </p>
         <p className="mt-1.5 max-w-xs text-[12.5px] leading-relaxed text-zinc-500">
           Published submissions appear here as soon as they pass review.

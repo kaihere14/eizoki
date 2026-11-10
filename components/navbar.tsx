@@ -4,12 +4,17 @@ import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Search, Settings, ShieldCheck } from "lucide-react";
+import { Search, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useLoginModal } from "@/components/login-modal";
 import { AccountControl } from "@/components/auth/account-control";
 import { useUser } from "@clerk/nextjs";
 import { SubmissionDialog } from "@/components/submission/submission-dialog";
+import {
+  SearchDialog,
+  type SearchOrigin,
+  type SearchOriginRect,
+} from "@/components/search-dialog";
 import { useEizokiUser } from "@/components/user-provider";
 import { RestrictionNotice } from "@/components/restriction-notice";
 import type { RestrictionCode } from "@/lib/account-limits";
@@ -89,6 +94,66 @@ export function Navbar({
   const setSubmissionOpen = (open: boolean) =>
     setSubmissionPath(open ? pathname : null);
   const [restriction, setRestriction] = useState<RestrictionCode | null>(null);
+  // Search grows out of the control that opened it and shrinks back into it.
+  // `open` turns false on close, but the state stays until the panel has
+  // landed, so the trigger stays hidden under it until then.
+  const [search, setSearch] = useState<{
+    origin: SearchOrigin;
+    open: boolean;
+    rect: SearchOriginRect | null;
+  } | null>(null);
+  const searchPillRef = useRef<HTMLButtonElement>(null);
+  const searchIconRef = useRef<HTMLButtonElement>(null);
+  const searchTriggerRect = (origin: SearchOrigin) => {
+    const element =
+      origin === "pill" ? searchPillRef.current : searchIconRef.current;
+    const rect = element?.getBoundingClientRect();
+    // A trigger hidden at this width has no box; the panel then just fades.
+    if (!rect || rect.width === 0) return null;
+    return { x: rect.left, y: rect.top, width: rect.width, height: rect.height };
+  };
+  const openSearch = (origin: SearchOrigin) => {
+    if (onSearchClick) return onSearchClick();
+    setSearch({ origin, open: true, rect: searchTriggerRect(origin) });
+  };
+  const closeSearch = () =>
+    setSearch((current) =>
+      current && {
+        ...current,
+        open: false,
+        // Measure again: the window may have changed size while open.
+        rect: searchTriggerRect(current.origin),
+      },
+    );
+
+  const openSearchRef = useRef(openSearch);
+  useEffect(() => {
+    openSearchRef.current = openSearch;
+  });
+
+  // ⌘K / Ctrl+K anywhere, or "/" when not typing, opens search.
+  useEffect(() => {
+    if (onSearchClick) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const typing =
+        target?.isContentEditable ||
+        ["INPUT", "TEXTAREA", "SELECT"].includes(target?.tagName ?? "");
+      const shortcut =
+        (event.key.toLowerCase() === "k" && (event.metaKey || event.ctrlKey)) ||
+        (event.key === "/" && !typing && !event.metaKey && !event.ctrlKey);
+      // Leave other open dialogs (submission, preview) in charge of the keys.
+      if (!shortcut || document.querySelector("dialog[open], [aria-modal]"))
+        return;
+      event.preventDefault();
+      // Grow from whichever trigger this screen width shows.
+      openSearchRef.current(
+        window.matchMedia("(min-width: 768px)").matches ? "pill" : "icon",
+      );
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onSearchClick]);
   const handleSubmitClick =
     onSubmitClick ??
     (() => {
@@ -432,10 +497,16 @@ export function Navbar({
           {/* Center: raised 3D search trigger (button, not an input) */}
           <div className="flex-1 mr-30 hidden md:flex items-center justify-center">
             <button
+              ref={searchPillRef}
               type="button"
-              onClick={onSearchClick}
+              onClick={() => openSearch("pill")}
+              aria-haspopup="dialog"
+              aria-expanded={search?.open === true}
+              aria-keyshortcuts="Meta+K Control+K /"
               aria-label="Search motions and prompts"
-              className="group relative h-9 w-[112px] flex items-center justify-center gap-1.5 rounded-full cursor-pointer border border-white bg-[linear-gradient(180deg,var(--raised-top)_0%,var(--raised-mid)_52%,var(--raised-bottom)_100%)] text-zinc-900 shadow-[inset_0_1px_0_var(--raised-highlight),inset_0_-1px_1px_rgba(0,0,0,0.06),0_1px_1px_rgba(9,9,11,0.06),0_4px_10px_-4px_rgba(9,9,11,0.14),0_12px_26px_-14px_rgba(9,9,11,0.22)] transition-[box-shadow,border-color,color] duration-200 ease-out hover:border-white hover:shadow-[inset_0_1px_0_var(--raised-highlight),inset_0_-1px_1px_rgba(0,0,0,0.06),0_1px_1px_rgba(9,9,11,0.07),0_6px_14px_-5px_rgba(9,9,11,0.16),0_16px_32px_-16px_rgba(9,9,11,0.24)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.985] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.10),inset_0_1px_0_rgba(255,255,255,0.9),0_1px_1px_rgba(9,9,11,0.05)]"
+              className={`group relative h-9 w-[112px] flex items-center justify-center gap-1.5 rounded-full cursor-pointer border border-white bg-[linear-gradient(180deg,var(--raised-top)_0%,var(--raised-mid)_52%,var(--raised-bottom)_100%)] text-zinc-900 shadow-[inset_0_1px_0_var(--raised-highlight),inset_0_-1px_1px_rgba(0,0,0,0.06),0_1px_1px_rgba(9,9,11,0.06),0_4px_10px_-4px_rgba(9,9,11,0.14),0_12px_26px_-14px_rgba(9,9,11,0.22)] transition-[box-shadow,border-color,color] duration-200 ease-out hover:border-white hover:shadow-[inset_0_1px_0_var(--raised-highlight),inset_0_-1px_1px_rgba(0,0,0,0.06),0_1px_1px_rgba(9,9,11,0.07),0_6px_14px_-5px_rgba(9,9,11,0.16),0_16px_32px_-16px_rgba(9,9,11,0.24)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.985] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.10),inset_0_1px_0_rgba(255,255,255,0.9),0_1px_1px_rgba(9,9,11,0.05)] ${
+                search?.origin === "pill" ? "opacity-0" : ""
+              }`}
             >
               <Search
                 className="w-[15px] h-[15px] text-zinc-500 shrink-0 transition-colors duration-200 group-hover:text-zinc-700"
@@ -447,8 +518,23 @@ export function Navbar({
             </button>
           </div>
 
-          {/* Right Section: Plus, Tactile Submit button & Settings */}
+          {/* Right Section: search icon, sponsors, admin and Submit */}
           <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* The centre search button only fits from md up. */}
+            <button
+              ref={searchIconRef}
+              type="button"
+              onClick={() => openSearch("icon")}
+              aria-haspopup="dialog"
+              aria-expanded={search?.open === true}
+              aria-label="Search motions and prompts"
+              className={`w-7 h-7 -mr-1 rounded-full flex md:hidden items-center justify-center text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100/70 border border-transparent hover:border-white active:scale-[0.96] transition-[background-color,border-color,color,transform] duration-150 cursor-pointer ${
+                search?.origin === "icon" ? "opacity-0" : ""
+              }`}
+            >
+              <Search className="w-4 h-4" strokeWidth={1.8} />
+            </button>
+
             {sponsorSlot}
 
             {isAdmin && (
@@ -472,15 +558,6 @@ export function Navbar({
             >
               <span>Submit</span>
             </button>
-
-            {/* Settings / Gear icon button */}
-            <button
-              type="button"
-              aria-label="Preferences"
-              className="w-7 h-7 rounded-full hidden sm:flex items-center justify-center text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100/70 border border-transparent hover:border-white active:scale-[0.96] transition-[background-color,border-color,color,transform] duration-150 cursor-pointer"
-            >
-              <Settings className="w-3.5 h-3.5" strokeWidth={1.8} />
-            </button>
           </div>
         </div>
       </header>
@@ -493,6 +570,22 @@ export function Navbar({
           }}
         />
       )}
+      {/* `custom` hands the closing panel the trigger's latest position. */}
+      <AnimatePresence
+        custom={search?.rect}
+        onExitComplete={() =>
+          setSearch((current) => (current?.open ? current : null))
+        }
+      >
+        {search?.open && (
+          <SearchDialog
+            key="search"
+            origin={search.origin}
+            originRect={search.rect}
+            onClose={closeSearch}
+          />
+        )}
+      </AnimatePresence>
       {restriction && (
         <RestrictionNotice
           code={restriction}

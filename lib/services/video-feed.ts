@@ -11,7 +11,7 @@ import {
   type VideoMetadata,
 } from "@/lib/videos";
 
-const CATEGORY_SLUGS = Object.keys(CATEGORY_LABELS) as [
+export const CATEGORY_SLUGS = Object.keys(CATEGORY_LABELS) as [
   VideoCategory,
   ...VideoCategory[],
 ];
@@ -157,16 +157,36 @@ export function videoDetails(row: VideoFeedRow): Omit<VideoMetadata, "videoUrl">
   };
 }
 
+/** Only approved videos whose publication time has passed are public. */
+function publicVideoWhere(now = new Date()) {
+  return {
+    reviewStatus: "APPROVED",
+    publishedAt: { not: null, lte: now },
+  } satisfies Prisma.VideoWhereInput;
+}
+
+/**
+ * Categories that have at least one public video, in the curated order of
+ * CATEGORY_LABELS. The category bar shows only these, so no filter is empty.
+ */
+export async function listPublicCategories(): Promise<VideoCategory[]> {
+  const rows = await prisma.video.findMany({
+    where: publicVideoWhere(),
+    distinct: ["category"],
+    select: { category: true },
+  });
+  const present = new Set(rows.map((row) => row.category));
+  return CATEGORY_SLUGS.filter((slug) => present.has(slug));
+}
+
 /**
  * The public catalogue is keyset-paginated by publication time. The id is the
  * tie-breaker so pages stay stable when several videos share a timestamp.
  */
 export async function listPublicVideos(query: VideoFeedQuery) {
-  const now = new Date();
   const rows = await prisma.video.findMany({
     where: {
-      reviewStatus: "APPROVED",
-      publishedAt: { not: null, lte: now },
+      ...publicVideoWhere(),
       ...(query.category ? { category: query.category } : {}),
     },
     orderBy: [{ publishedAt: "desc" }, { id: "desc" }],

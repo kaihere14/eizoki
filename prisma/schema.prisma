@@ -112,6 +112,10 @@ model Video {
   toolsUsed      String[]          @default([])
   curatorNotes   String?
 
+  /// Lower-cased title, creator, category, tags, tools, description and
+  /// prompt, kept by the `videos_search_text` database trigger. Never write it.
+  searchText String @default("")
+
   /// The submission service will approve admin submissions using User.isAdmin.
   /// A safe database default keeps ordinary submissions out of the public feed.
   reviewStatus VideoReviewStatus @default(PENDING_REVIEW)
@@ -131,6 +135,7 @@ model Video {
   @@index([reviewedById])
   @@index([category, publishedAt, id])
   @@index([tags], type: Gin)
+  @@index([searchText(ops: raw("gin_trgm_ops"))], type: Gin)
   @@map("videos")
 }
 
