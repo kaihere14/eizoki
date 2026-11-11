@@ -1,4 +1,5 @@
 import { revalidateTag } from "next/cache";
+import { logSponsorshipBookingCreated } from "@/instrumentation";
 import { apiErrorResponse } from "@/lib/api-error";
 import {
   createSponsorshipBooking,
@@ -12,6 +13,7 @@ export async function POST(request: Request) {
     if (sponsorship.status === "APPROVED") {
       revalidateTag(SPONSORSHIP_CACHE_TAG, { expire: 0 });
     }
+    await logSponsorshipBookingCreated(sponsorship.status);
     return Response.json({ sponsorship }, { status: 201 });
   } catch (error) {
     return apiErrorResponse(

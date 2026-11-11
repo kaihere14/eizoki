@@ -1,5 +1,6 @@
 "use client";
 
+import posthog from "posthog-js";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   cancelVideoUpload,
@@ -125,6 +126,15 @@ export function useVideoSubmission(
       try {
         const result = await sendVideoSubmission(upload, metadata, poster);
         uploadedRef.current = null;
+        posthog.capture("video_submitted", {
+          video_id: result.id,
+          category: metadata.category,
+          prompt_status: metadata.promptStatus,
+          tag_count: metadata.tags.length,
+          tool_count: metadata.toolsUsed.length,
+          review_status: result.reviewStatus,
+          is_featured: metadata.isFeatured,
+        });
         setReceipt(result);
         window.dispatchEvent(new Event("eizoki:videos-changed"));
       } catch (cause) {

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import posthog from "posthog-js";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useLoginModal } from "@/components/login-modal";
@@ -276,6 +277,12 @@ export function Sponsorship() {
           ? (result.sponsorship as { status?: string; endsAt?: string | null })
           : null;
       const live = sponsorship?.status === "APPROVED";
+      posthog.capture("sponsorship_booking_submitted", {
+        placement: plan.placement,
+        is_live_immediately: live,
+        includes_video: Boolean(needsVideo),
+        has_custom_icon: Boolean(iconFile),
+      });
       setSubmit({ status: "done", live, endsAt: sponsorship?.endsAt ?? null });
       if (live) {
         // Show the new sponsor in the navbar and feed without a reload.

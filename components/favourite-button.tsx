@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@clerk/nextjs";
+import posthog from "posthog-js";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Heart } from "lucide-react";
@@ -156,6 +157,10 @@ function FavouriteButtonState({
 
     try {
       const persisted = await setVideoFavourite(videoId, next);
+      posthog.capture(persisted ? "favourite_added" : "favourite_removed", {
+        video_id: videoId,
+        display_variant: compact ? variant : "default",
+      });
       setFavourited(persisted);
       onChange?.(persisted);
       if (mounted.current && next && persisted && animateSave && onSaveComplete) {
