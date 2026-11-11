@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import posthog from "posthog-js";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useEffect, useRef, useState } from "react";
 import { useEizokiUser } from "@/components/user-provider";
@@ -111,6 +112,7 @@ export function AccountControl({ onLogin }: { onLogin: () => void }) {
     setAvatarNotice(null);
     try {
       await updateAvatar(AVATARS[choice].value);
+      posthog.capture("avatar_updated");
       setAvatarNotice("Avatar updated");
     } catch (error) {
       setError(authErrorMessage(error));

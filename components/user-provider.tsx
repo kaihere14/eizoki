@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth, useClerk } from "@clerk/nextjs";
+import posthog from "posthog-js";
 import { RestrictionNotice } from "@/components/restriction-notice";
 import {
   createContext,
@@ -97,18 +98,46 @@ export function UserProvider({ children }: { children: ReactNode }) {
     error: null,
   });
   const abortRef = useRef<AbortController | null>(null);
+  const identifiedUserIdRef = useRef<string | null>(null);
+
+  const resetIdentity = useCallback(() => {
+    if (!identifiedUserIdRef.current) return;
+    posthog.reset();
+    identifiedUserIdRef.current = null;
+  }, []);
 
   // A suspended account cannot use the app: sign it out and say why. The user
   // record loads right after every sign-in, so a banned user cannot get past it.
   const apply = useCallback(
     (next: UserState) => {
+      if (next.user) {
+        if (
+          identifiedUserIdRef.current &&
+          identifiedUserIdRef.current !== next.user.id
+        ) {
+          resetIdentity();
+        }
+        if (identifiedUserIdRef.current !== next.user.id) {
+          posthog.identify(next.user.id, {
+            email: next.user.email,
+            first_name: next.user.firstName ?? undefined,
+            last_name: next.user.lastName ?? undefined,
+            username: next.user.username ?? undefined,
+            is_admin: next.user.isAdmin,
+          });
+          identifiedUserIdRef.current = next.user.id;
+        }
+      } else {
+        resetIdentity();
+      }
+
       setState(next);
       if (next.suspended) {
         setShowSuspended(true);
         void signOut();
       }
     },
-    [signOut],
+    [resetIdentity, signOut],
   );
 
   const refresh = useCallback(async () => {
@@ -122,13 +151,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const next = await fetchUser(userId, controller.signal);
       if (!controller.signal.aborted) apply(next);
     } catch (cause) {
-      if (!controller.signal.aborted) setState(failure(userId, cause));
+      if (!controller.signal.aborted) apply(failure(userId, cause));
     }
   }, [userId, apply]);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !userId) {
       abortRef.current?.abort();
+      resetIdentity();
       return;
     }
 
@@ -141,11 +171,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
         if (!controller.signal.aborted) apply(next);
       })
       .catch((cause: unknown) => {
-        if (!controller.signal.aborted) setState(failure(userId, cause));
+        if (!controller.signal.aborted) apply(failure(userId, cause));
       });
 
     return () => controller.abort();
-  }, [isLoaded, isSignedIn, userId, apply]);
+  }, [isLoaded, isSignedIn, userId, apply, resetIdentity]);
 
   // Upload limits change when the user submits or deletes a video, and when an
   // admin reviews one, so re-read them on those events and on returning to the tab.
@@ -171,7 +201,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       });
 
       if (response.status === 401) {
-        setState({ userId, user: null, error: null });
+        apply({ userId, user: null, error: null });
         throw new Error("Your session expired. Please sign in again.");
       }
 
@@ -180,7 +210,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const body = (await response.json()) as { user: ApiUser };
       setState({ userId, user: body.user, error: null });
     },
-    [userId],
+    [userId, apply],
   );
 
   const signedIn = isSignedIn === true;

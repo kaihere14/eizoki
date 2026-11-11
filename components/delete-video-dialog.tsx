@@ -1,5 +1,6 @@
 "use client";
 
+import posthog from "posthog-js";
 import { useEffect, useRef, useState } from "react";
 import { LoaderCircle, Trash2 } from "lucide-react";
 import { removeMyVideo } from "@/lib/my-videos";
@@ -44,6 +45,7 @@ export function DeleteVideoDialog({
     setError(null);
     try {
       await removeMyVideo(video.id);
+      posthog.capture("video_deleted", { video_id: video.id });
       onDeleted(video.id);
     } catch (cause) {
       setError(

@@ -1,5 +1,6 @@
 "use client";
 
+import posthog from "posthog-js";
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { promptWithVideoReference } from "@/lib/video-reference";
@@ -19,6 +20,7 @@ export function CopyPromptButton({
       await navigator.clipboard.writeText(
         promptWithVideoReference(promptText, videoId, window.location.origin),
       );
+      posthog.capture("prompt_copied", { video_id: videoId });
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1600);
     } catch {

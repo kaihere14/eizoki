@@ -1,3 +1,4 @@
+import { logVideoSubmissionCreated } from "@/instrumentation";
 import { submissionErrorResponse } from "@/lib/api-error";
 import { createVideoSubmission } from "@/lib/services/video-submissions";
 import { getLiveFeedSponsor } from "@/lib/services/sponsorships";
@@ -64,6 +65,7 @@ export async function POST(request: Request) {
     const video = await createVideoSubmission(request);
     // Admin submissions publish straight away.
     if (video.reviewStatus === "APPROVED") invalidatePublicVideos();
+    await logVideoSubmissionCreated(video.reviewStatus);
     return Response.json({ video }, { status: 201 });
   } catch (error) {
     return submissionErrorResponse(error);
