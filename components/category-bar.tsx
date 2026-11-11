@@ -256,7 +256,7 @@ export function CategoryBar({
   }
 
   return (
-    <div className="sticky top-15 z-40 -mx-4 mb-3 sm:top-16 sm:-mx-3 sm:mb-4">
+    <div className="category-bar sticky z-40 -mx-4 mb-3 sm:-mx-3 sm:mb-4">
       {/* Progressive blur: strongest under the navbar, easing to none at the
           bottom of the bar. Full-bleed, and reaching up to the navbar's edge
           so content never shows sharp in the gap. See globals.css. */}

@@ -1,3 +1,4 @@
+import { io } from "next/cache";
 import type { VideoFeedPage } from "@/lib/video-feed";
 import { CategoryFeed } from "@/components/category-feed";
 import {
@@ -24,6 +25,8 @@ export async function PublicVideoFeed({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  // Publication cutoffs use the current time; resolve them outside the static shell.
+  await io();
   const category = parseCategory((await searchParams).category);
 
   let initialPage: VideoFeedPage | undefined;

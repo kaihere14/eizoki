@@ -227,6 +227,22 @@ body {
   .notice-dialog[data-closing]::backdrop { animation: notice-backdrop-out 150ms ease-in both; }
 }
 
+/* Keep the category pills below the navbar, then 4px from the viewport top
+   (the row's pt-1) when the navbar slides away. */
+.category-bar {
+  top: 60px;
+  transition: top 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@media (min-width: 640px) {
+  .category-bar { top: 64px; }
+}
+body:has(> header[data-navbar-hidden="true"]) .category-bar {
+  top: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .category-bar { transition: none; }
+}
+
 /* Progressive blur behind the sticky category bar: five stacked backdrop
    blurs, each masked to a band, doubling in strength toward the top. The
    bottom eighth stays sharp, so the blur fades to nothing instead of ending

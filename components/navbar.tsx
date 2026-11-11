@@ -5,6 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Search, ShieldCheck } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { GithubIcon } from "@hugeicons/core-free-icons";
 import { motion, AnimatePresence } from "motion/react";
 import { useLoginModal } from "@/components/login-modal";
 import { AccountControl } from "@/components/auth/account-control";
@@ -89,6 +91,8 @@ export function Navbar({
   // The navbar stays usable while the submission form is open, so the form
   // belongs to the page it was opened on: navigating elsewhere closes it.
   const pathname = usePathname();
+  const headerRef = useRef<HTMLElement>(null);
+  const [hiddenOnPath, setHiddenOnPath] = useState<string | null>(null);
   const [submissionPath, setSubmissionPath] = useState<string | null>(null);
   const submissionOpen = submissionPath !== null && submissionPath === pathname;
   const setSubmissionOpen = (open: boolean) =>
@@ -102,6 +106,45 @@ export function Navbar({
     open: boolean;
     rect: SearchOriginRect | null;
   } | null>(null);
+  const navbarHidden =
+    hiddenOnPath === pathname && !submissionOpen && !search && !restriction;
+
+  useEffect(() => {
+    let previousY = window.scrollY;
+    let frame = 0;
+    const updateVisibility = () => {
+      frame = 0;
+      // Clamp elastic overscroll so bouncing at either edge cannot hide the bar.
+      const maxY = Math.max(
+        0,
+        document.documentElement.scrollHeight - window.innerHeight,
+      );
+      const currentY = Math.max(0, Math.min(window.scrollY, maxY));
+      const nearTop = currentY <= (headerRef.current?.offsetHeight ?? 53);
+      const keyboardFocus =
+        headerRef.current?.contains(document.activeElement) &&
+        document.activeElement?.matches(":focus-visible");
+
+      if (nearTop || keyboardFocus) {
+        setHiddenOnPath(null);
+        previousY = currentY;
+        return;
+      }
+      // Accumulate small movements, ignoring trackpad jitter.
+      if (Math.abs(currentY - previousY) < 8) return;
+      setHiddenOnPath(currentY > previousY ? pathname : null);
+      previousY = currentY;
+    };
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(updateVisibility);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.cancelAnimationFrame(frame);
+    };
+  }, [pathname]);
+
   const searchPillRef = useRef<HTMLButtonElement>(null);
   const searchIconRef = useRef<HTMLButtonElement>(null);
   const searchTriggerRect = (origin: SearchOrigin) => {
@@ -262,13 +305,16 @@ export function Navbar({
   return (
     <>
       <header
+        ref={headerRef}
+        data-navbar-hidden={navbarHidden}
+        onFocusCapture={() => setHiddenOnPath(null)}
         onClickCapture={(event) => {
           // A navbar link (logo, My Videos, ...) leaves the form, even when it
           // points at the current page.
           if ((event.target as Element).closest("a[href]"))
             setSubmissionOpen(false);
         }}
-        className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-zinc-200/80 select-none"
+        className={`sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-zinc-200/80 select-none transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none ${navbarHidden ? "-translate-y-full" : "translate-y-0"}`}
       >
         <div className="mx-auto w-full max-w-[1440px] flex items-center justify-between h-13 px-4 sm:px-6 lg:px-8">
           {/* Left Section: Logo & Brand + Separator */}
@@ -299,7 +345,7 @@ export function Navbar({
               <div
                 ref={textRef}
                 onMouseEnter={() => handleMouseEnter("text")}
-                className="relative inline-flex items-center"
+                className="relative hidden min-[360px]:inline-flex items-center"
               >
                 <span className="text-[14.5px] font-medium tracking-tight text-zinc-900 group-hover:text-zinc-950 transition-colors duration-150">
                   eizoki
@@ -395,7 +441,7 @@ export function Navbar({
 
             {/* Simple | Separator */}
             <span
-              className="text-zinc-300 font-light select-none text-xs px-2"
+              className="hidden min-[360px]:inline text-zinc-300 font-light select-none text-xs px-2"
               aria-hidden="true"
             >
               |
@@ -518,7 +564,7 @@ export function Navbar({
             </button>
           </div>
 
-          {/* Right Section: search icon, sponsors, admin and Submit */}
+          {/* Right Section: search icon, sponsors, admin, Submit and GitHub */}
           <div className="flex items-center gap-2 sm:gap-2.5">
             {/* The centre search button only fits from md up. */}
             <button
@@ -558,6 +604,21 @@ export function Navbar({
             >
               <span>Submit</span>
             </button>
+            <a
+              href="https://github.com/kaihere14/eizoki"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Eizoki on GitHub (opens in a new tab)"
+              title="View Eizoki on GitHub"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-transparent text-zinc-500 transition-[background-color,color,transform] duration-150 hover:bg-zinc-100/70 hover:text-zinc-900 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 motion-reduce:transition-none"
+            >
+              <HugeiconsIcon
+                icon={GithubIcon}
+                aria-hidden="true"
+                className="h-4 w-4"
+                strokeWidth={1.8}
+              />
+            </a>
           </div>
         </div>
       </header>
