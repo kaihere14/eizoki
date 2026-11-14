@@ -19,6 +19,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { SiteFooter } from "@/components/site-footer";
 import { UserProvider } from "@/components/user-provider";
 import { Analytics } from "@vercel/analytics/next";
+import { CookieConsent } from "@/components/cookie-consent";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -83,6 +84,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </ClerkProvider>
         </ThemeProvider>
         <Analytics />
+        <CookieConsent />
       </body>
     </html>
   );

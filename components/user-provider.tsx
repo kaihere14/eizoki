@@ -2,6 +2,10 @@
 
 import { useAuth, useClerk } from "@clerk/nextjs";
 import posthog from "posthog-js";
+import {
+  applyAnalyticsConsent,
+  CONSENT_CHANGE_EVENT,
+} from "@/lib/analytics-consent";
 import { RestrictionNotice } from "@/components/restriction-notice";
 import {
   createContext,
@@ -51,6 +55,16 @@ type UserState = {
   /** The account is banned; the provider signs it out. */
   suspended?: boolean;
 };
+
+function identifyInPostHog(user: ApiUser) {
+  posthog.identify(user.id, {
+    email: user.email,
+    first_name: user.firstName ?? undefined,
+    last_name: user.lastName ?? undefined,
+    username: user.username ?? undefined,
+    is_admin: user.isAdmin,
+  });
+}
 
 function failure(userId: string, cause: unknown): UserState {
   return {
@@ -103,6 +117,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const resetIdentity = useCallback(() => {
     if (!identifiedUserIdRef.current) return;
     posthog.reset();
+    // reset() also clears PostHog's consent; restore the visitor's choice.
+    applyAnalyticsConsent();
     identifiedUserIdRef.current = null;
   }, []);
 
@@ -118,13 +134,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
           resetIdentity();
         }
         if (identifiedUserIdRef.current !== next.user.id) {
-          posthog.identify(next.user.id, {
-            email: next.user.email,
-            first_name: next.user.firstName ?? undefined,
-            last_name: next.user.lastName ?? undefined,
-            username: next.user.username ?? undefined,
-            is_admin: next.user.isAdmin,
-          });
+          identifyInPostHog(next.user);
           identifiedUserIdRef.current = next.user.id;
         }
       } else {
@@ -189,6 +199,20 @@ export function UserProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("focus", reload);
     };
   }, [isSignedIn, refresh]);
+
+  // identify() does nothing before consent, so link the account once the
+  // visitor accepts analytics while already signed in.
+  const signedInUser = state.userId === userId ? state.user : null;
+  useEffect(() => {
+    if (!signedInUser) return;
+    const onConsent = (event: Event) => {
+      if ((event as CustomEvent<string>).detail === "granted") {
+        identifyInPostHog(signedInUser);
+      }
+    };
+    window.addEventListener(CONSENT_CHANGE_EVENT, onConsent);
+    return () => window.removeEventListener(CONSENT_CHANGE_EVENT, onConsent);
+  }, [signedInUser]);
 
   const updateAvatar = useCallback(
     async (avatar: UserAvatar) => {

@@ -25,7 +25,7 @@ export const PRIVATE_ROBOTS: Metadata["robots"] = {
 };
 
 export type PublicPage = {
-  path: "/" | "/info" | "/sponsor" | "/blog";
+  path: "/" | "/info" | "/sponsor" | "/blog" | "/cookies";
   title: string;
   description: string;
   schemaType: "CollectionPage" | "AboutPage" | "WebPage";
@@ -58,6 +58,13 @@ export const PUBLIC_PAGES = {
     description:
       "Guides to AI motion design, AI video prompts and launch films, with breakdowns of real videos from the Eizoki collection.",
     schemaType: "CollectionPage",
+  },
+  cookies: {
+    path: "/cookies",
+    title: "Cookie Policy",
+    description:
+      "What Eizoki stores in your browser: essential sign-in and preference cookies, optional PostHog analytics, and how to change your choice.",
+    schemaType: "WebPage",
   },
 } as const satisfies Record<string, PublicPage>;
 

@@ -227,6 +227,19 @@ body {
   .notice-dialog[data-closing]::backdrop { animation: notice-backdrop-out 150ms ease-in both; }
 }
 
+/* Cookie banner: rises in once, drops away after a choice. EXIT_MS in
+   cookie-consent.tsx matches the 150 ms exit. */
+.cookie-banner {
+  animation: notice-in 220ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.cookie-banner[data-closing] {
+  animation: notice-out 150ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cookie-banner { animation: none; }
+  .cookie-banner[data-closing] { animation: notice-backdrop-out 150ms ease-in both; }
+}
+
 /* Keep the category pills below the navbar, then 4px from the viewport top
    (the row's pt-1) when the navbar slides away. */
 .category-bar {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CookieSettingsButton } from "@/components/cookie-consent";
 import { BLOG_POSTS } from "@/lib/blog";
 import { blogPostPath } from "@/lib/seo";
 import { CATEGORY_LANDING_LIST } from "@/lib/seo-categories";
@@ -67,6 +68,14 @@ export function SiteFooter() {
               <Link href="/sponsor" className={LINK_CLASS}>
                 Sponsor
               </Link>
+            </li>
+            <li>
+              <Link href="/cookies" className={LINK_CLASS}>
+                Cookie policy
+              </Link>
+            </li>
+            <li>
+              <CookieSettingsButton className={LINK_CLASS} />
             </li>
           </ul>
         </nav>

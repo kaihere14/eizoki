@@ -59,7 +59,7 @@ describe("client instrumentation must allow the app to start", () => {
     expect(result.warnings).toHaveLength(1);
   });
 
-  test("configured analytics keeps its existing options", () => {
+  test("configured analytics starts opted out until cookie consent", () => {
     const result = bootAnalytics({
       token: "phc_test_token",
       host: "https://analytics.example.com",
@@ -72,6 +72,8 @@ describe("client instrumentation must allow the app to start", () => {
           defaults: "2026-08-30",
           capture_exceptions: true,
           debug: true,
+          opt_out_capturing_by_default: true,
+          opt_out_persistence_by_default: true,
         },
       ],
     ]);
