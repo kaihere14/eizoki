@@ -120,7 +120,7 @@ export function VideoCard({
         {shouldLoad && (
           <video
             ref={videoRef}
-            src={video.videoUrl}
+            src={video.previewUrl ?? video.videoUrl}
             muted
             loop
             playsInline

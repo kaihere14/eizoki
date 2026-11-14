@@ -101,6 +101,10 @@ model Video {
   /// Still frame (WebP in R2) shown while the video loads. Optional: older
   /// videos and uploads whose frame the browser could not capture have none.
   posterKey       String? @unique
+  /// Short, small, silent MP4 (in R2) that feed cards play instead of the
+  /// original, which can be tens of megabytes. Made offline by
+  /// `bun run previews:backfill`; until then the card plays the original.
+  previewKey      String? @unique
   /// Width / height of the video, read from the poster. Lets the feed reserve
   /// each card's real shape before any media arrives.
   aspectRatio     Float?

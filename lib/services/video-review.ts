@@ -83,6 +83,7 @@ async function decide(
     storageKey?: null;
     imagekitFileId?: null;
     posterKey?: null;
+    previewKey?: null;
   } = {},
 ) {
   const now = new Date();
@@ -129,15 +130,22 @@ export async function rejectVideo(
   // A pending video's file never changes, so reading it first is safe.
   const file = await prisma.video.findUnique({
     where: { id },
-    select: { storageKey: true, imagekitFileId: true, posterKey: true },
+    select: {
+      storageKey: true,
+      imagekitFileId: true,
+      posterKey: true,
+      previewKey: true,
+    },
   });
   await decide(id, "REJECTED", notes?.trim() || null, reviewerId, {
     videoUrl: null,
     storageKey: null,
     imagekitFileId: null,
     posterKey: null,
+    previewKey: null,
   });
   if (file?.storageKey) await cleanupR2Object(file.storageKey);
   else if (file?.imagekitFileId) await cleanupUploadedVideo(file.imagekitFileId);
   await cleanupPoster(file?.posterKey);
+  if (file?.previewKey) await cleanupR2Object(file.previewKey);
 }

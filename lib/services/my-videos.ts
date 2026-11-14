@@ -2,7 +2,7 @@ import { ApiError } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 import { deleteImageKitFile } from "./imagekit";
 import { deliveredVideoUrl } from "./media-url";
-import { deleteR2Object } from "./r2";
+import { cleanupR2Object, deleteR2Object } from "./r2";
 import { cleanupPoster } from "./video-posters";
 import { requireSubmissionUser } from "./submission-user";
 import {
@@ -52,7 +52,12 @@ export async function deleteMyVideo(id: string) {
   const where = user.isAdmin ? { id } : { id, submittedById: user.id };
   const owned = await prisma.video.findFirst({
     where,
-    select: { imagekitFileId: true, storageKey: true, posterKey: true },
+    select: {
+      imagekitFileId: true,
+      storageKey: true,
+      posterKey: true,
+      previewKey: true,
+    },
   });
   // Missing and someone else's video have the same response.
   if (!owned) throw new ApiError(404, "Video not found.");
@@ -78,4 +83,5 @@ export async function deleteMyVideo(id: string) {
   }
   // Nothing references the poster any more; a failure only leaves a stray image.
   await cleanupPoster(owned.posterKey);
+  if (owned.previewKey) await cleanupR2Object(owned.previewKey);
 }

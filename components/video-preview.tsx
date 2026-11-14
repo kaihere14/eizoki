@@ -130,7 +130,7 @@ function MiniVideo({ video }: { video: VideoMetadata }) {
       {shouldLoad && (
         <video
           ref={videoRef}
-          src={video.videoUrl}
+          src={video.previewUrl ?? video.videoUrl}
           muted
           loop
           playsInline

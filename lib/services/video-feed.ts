@@ -89,6 +89,7 @@ export const VIDEO_FEED_SELECT = {
   videoUrl: true,
   storageKey: true,
   posterKey: true,
+  previewKey: true,
   aspectRatio: true,
   durationSeconds: true,
   promptStatus: true,
@@ -138,6 +139,7 @@ export function videoDetails(row: VideoFeedRow): Omit<VideoMetadata, "videoUrl">
     isFeatured: row.isFeatured,
     durationSeconds: row.durationSeconds ?? undefined,
     posterUrl: row.posterKey ? r2ObjectUrl(row.posterKey) : undefined,
+    previewUrl: row.previewKey ? r2ObjectUrl(row.previewKey) : undefined,
     aspectRatio: row.aspectRatio ?? undefined,
     creator: {
       name: row.creatorName,

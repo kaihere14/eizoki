@@ -32,6 +32,7 @@ export interface VideoMetadata {
   videoUrl: string;
   /** Still frame shown while the video loads. */
   posterUrl?: string;
+  /** Small silent clip for feed cards; the original plays in the full player. */
   previewUrl?: string;
   thumbnailUrl?: string;
   aspectRatio?: number;
