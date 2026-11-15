@@ -182,8 +182,9 @@ export async function listPublicCategories(): Promise<VideoCategory[]> {
 }
 
 /**
- * The public catalogue is keyset-paginated by publication time. The id is the
- * tie-breaker so pages stay stable when several videos share a timestamp.
+ * Featured videos lead the catalogue in the same query as regular videos.
+ * Publication time and id order each group; the cursor follows that full
+ * ordering so pagination never needs a separate featured fetch.
  */
 export async function listPublicVideos(query: VideoFeedQuery) {
   const rows = await prisma.video.findMany({
@@ -191,7 +192,11 @@ export async function listPublicVideos(query: VideoFeedQuery) {
       ...publicVideoWhere(),
       ...(query.category ? { category: query.category } : {}),
     },
-    orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
+    orderBy: [
+      { isFeatured: "desc" },
+      { publishedAt: "desc" },
+      { id: "desc" },
+    ],
     take: query.limit + 1,
     ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
     select: VIDEO_FEED_SELECT,

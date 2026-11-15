@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, Check, Copy, Film, Trash2 } from "lucide-react";
+import { ArrowUpRight, Check, Copy, Film, Star, Trash2 } from "lucide-react";
 import { animateFavouriteSave } from "@/lib/favourite-animation";
 import { FavouriteButton } from "@/components/favourite-button";
 import { useViewportVideo } from "@/components/use-viewport-video";
@@ -93,10 +93,14 @@ export function VideoCard({
         ref={cardRef}
         type="button"
         onClick={() => onOpen(video)}
-        aria-label={`Preview ${video.title} by ${video.creator.name}`}
+        aria-label={`${video.isFeatured ? "Featured: " : ""}Preview ${video.title} by ${video.creator.name}`}
         aria-haspopup="dialog"
         style={{ aspectRatio: ratio ?? placeholderRatio }}
-        className={`group relative block w-full cursor-pointer overflow-hidden rounded-xl border border-zinc-200/70 text-left shadow-[0_1px_2px_rgba(9,9,11,0.04)] transition-shadow duration-200 ease-out group-hover:shadow-[0_10px_28px_-14px_rgba(9,9,11,0.2)] ${
+        className={`group relative block w-full cursor-pointer overflow-hidden rounded-xl border text-left transition-shadow duration-200 ease-out ${
+          video.isFeatured
+            ? "border-brand-400/70 shadow-[0_0_24px_-4px_var(--brand-shadow)] hover:shadow-[0_0_28px_-2px_var(--brand-shadow-strong)]"
+            : "border-zinc-200/70 shadow-[0_1px_2px_rgba(9,9,11,0.04)] group-hover:shadow-[0_10px_28px_-14px_rgba(9,9,11,0.2)]"
+        } ${
           ready || posterReady || failed ? "bg-zinc-100" : "skeleton-shimmer"
         }`}
       >
@@ -144,6 +148,13 @@ export function VideoCard({
         {failed && (
           <span className="absolute inset-0 flex items-center justify-center bg-zinc-100 text-zinc-400">
             <Film className="h-6 w-6" strokeWidth={1.4} aria-hidden="true" />
+          </span>
+        )}
+
+        {video.isFeatured && (
+          <span className="pointer-events-none absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full border border-brand-400/40 bg-brand-50 px-2 py-1 text-[10px] font-medium text-[color:color-mix(in_srgb,var(--brand-600)_90%,var(--foreground))] shadow-sm">
+            <Star className="h-3 w-3 fill-current" aria-hidden="true" />
+            Featured
           </span>
         )}
       </button>

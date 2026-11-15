@@ -152,8 +152,30 @@ describe("GET /api/videos", () => {
     expect(args.where).toMatchObject({ reviewStatus: "APPROVED" });
     expect(args.where.publishedAt).toMatchObject({ not: null });
     expect(args.take).toBe(25);
-    expect(args.orderBy).toEqual([{ publishedAt: "desc" }, { id: "desc" }]);
+    expect(args.orderBy).toEqual([
+      { isFeatured: "desc" },
+      { publishedAt: "desc" },
+      { id: "desc" },
+    ]);
   });
+
+  test.each([undefined, "last-featured", "last-regular"])(
+    "keeps featured priority in one catalogue query with cursor %s",
+    async (cursor) => {
+      await GET(request(cursor ? `cursor=${cursor}` : ""));
+
+      expect(findMany).toHaveBeenCalledTimes(1);
+      expect(findMany.mock.calls[0][0]).toMatchObject({
+        orderBy: [
+          { isFeatured: "desc" },
+          { publishedAt: "desc" },
+          { id: "desc" },
+        ],
+        take: 25,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      });
+    },
+  );
 
   test("uses the uploader's selected female avatar", async () => {
     findMany.mockResolvedValue([row({ submittedBy: { avatar: "GIRL" } })]);
