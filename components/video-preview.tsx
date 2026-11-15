@@ -6,6 +6,7 @@ import Link from "next/link";
 import { videoPath } from "@/lib/seo";
 import { AVATAR_IMAGES } from "@/lib/user";
 import { FavouriteButton } from "@/components/favourite-button";
+import { ExpandablePrompt } from "@/components/expandable-prompt";
 import { useViewportVideo } from "@/components/use-viewport-video";
 import {
   promptWithVideoReference,
@@ -432,9 +433,7 @@ export function VideoPreview({
 
               <div className="mt-2 rounded-2xl border border-zinc-200/60 bg-white p-3.5">
                 {hasPrompt && (
-                  <p className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-zinc-600">
-                    {video.promptText}
-                  </p>
+                  <ExpandablePrompt key={video.id} text={video.promptText!} />
                 )}
                 <p
                   className={`${hasPrompt ? "mt-3 border-t border-zinc-100 pt-3 " : ""}text-[12px] leading-relaxed text-zinc-500`}

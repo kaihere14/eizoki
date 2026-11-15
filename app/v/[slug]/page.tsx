@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowUpRight, ChevronRight } from "lucide-react";
 import { CopyPromptButton } from "@/components/copy-prompt-button";
+import { ExpandablePrompt } from "@/components/expandable-prompt";
 import { FavouriteButton } from "@/components/favourite-button";
 import { JsonLd } from "@/components/json-ld";
 import { SectionLabel, VideoLinkGrid } from "@/components/video-link-grid";
@@ -276,9 +277,7 @@ export default async function VideoPage({ params }: PageProps<"/v/[slug]">) {
               </div>
               <div className="mt-2 rounded-2xl border border-zinc-200/60 bg-white p-3.5">
                 {hasPrompt ? (
-                  <p className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-zinc-600">
-                    {video.promptText}
-                  </p>
+                  <ExpandablePrompt key={video.id} text={video.promptText!} />
                 ) : (
                   <p className="text-[12.5px] leading-relaxed text-zinc-500">
                     The creator has not shared a prompt for this video. Copy
