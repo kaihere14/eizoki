@@ -7,6 +7,7 @@ import { ExpandablePrompt } from "@/components/expandable-prompt";
 import { FavouriteButton } from "@/components/favourite-button";
 import { JsonLd } from "@/components/json-ld";
 import { SectionLabel, VideoLinkGrid } from "@/components/video-link-grid";
+import { VideoPlayer } from "@/components/video-player";
 import { videoReferencePath } from "@/lib/video-reference";
 import {
   absoluteUrl,
@@ -187,7 +188,7 @@ export default async function VideoPage({ params }: PageProps<"/v/[slug]">) {
                 maxWidth: `calc(75dvh * ${video.aspectRatio ?? 16 / 9})`,
               }}
             >
-              <video
+              <VideoPlayer
                 src={video.videoUrl}
                 poster={video.posterUrl}
                 controls

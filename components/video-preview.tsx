@@ -8,6 +8,7 @@ import { AVATAR_IMAGES } from "@/lib/user";
 import { FavouriteButton } from "@/components/favourite-button";
 import { ExpandablePrompt } from "@/components/expandable-prompt";
 import { useViewportVideo } from "@/components/use-viewport-video";
+import { usePauseOnHide } from "@/components/use-pause-on-hide";
 import {
   promptWithVideoReference,
   videoReferencePath,
@@ -55,6 +56,9 @@ function PreviewMedia({
       // Autoplay with sound can still be blocked by strict browser policies.
     });
   }, [video.id]);
+
+  // Leaving the page hides it rather than unmounting it; stop the sound.
+  usePauseOnHide(videoRef, video.id);
 
   return (
     <div
@@ -322,6 +326,9 @@ export function VideoPreview({
               {/* The video's own page: a stable link to share, and one crawlers can follow. */}
               <Link
                 href={videoPath(video.slug)}
+                // The preview's page stays mounted in the background; close
+                // the preview so its player is gone when the user comes back.
+                onNavigate={onClose}
                 className="rounded-sm outline-none hover:underline hover:decoration-zinc-300 hover:underline-offset-4 focus-visible:ring-2 focus-visible:ring-brand"
               >
                 {video.title}
