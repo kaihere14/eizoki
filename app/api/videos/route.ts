@@ -9,9 +9,11 @@ import {
 } from "@/lib/services/video-feed";
 
 const FEED_HEADERS = {
-  // The catalogue changes rarely; let the browser reuse a page briefly while
-  // revalidating in the background after a publish.
-  "Cache-Control": "public, max-age=30, stale-while-revalidate=120",
+  // The catalogue changes rarely. Browsers reuse a page for 30 seconds and
+  // the Vercel CDN for 5 minutes (s-maxage), so repeat requests for the same
+  // page skip the function. A newly approved video can take that long to
+  // appear in later pages; the prerendered pages refresh at once.
+  "Cache-Control": "public, max-age=30, s-maxage=300, stale-while-revalidate=600",
 };
 
 export async function GET(request: Request) {

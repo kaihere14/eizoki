@@ -6,7 +6,8 @@ import {
 const SEARCH_HEADERS = {
   // Results only change when a video is published or taken down, so repeated
   // keystrokes for the same query can reuse a recent answer.
-  "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
+  // s-maxage lets the Vercel CDN answer common queries without the function.
+  "Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=600",
 };
 
 export async function GET(request: Request) {

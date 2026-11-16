@@ -29,6 +29,9 @@ type UserContextValue = {
 
 const UserContext = createContext<UserContextValue | null>(null);
 
+/** Returning to the tab re-reads the account at most once per 5 minutes. */
+const FOCUS_RELOAD_INTERVAL_MS = 5 * 60 * 1000;
+
 export function useEizokiUser() {
   const context = useContext(UserContext);
 
@@ -189,14 +192,22 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   // Upload limits change when the user submits or deletes a video, and when an
   // admin reviews one, so re-read them on those events and on returning to the tab.
+  // Each reload calls Clerk and writes the user row, so a focus reload waits
+  // at least FOCUS_RELOAD_INTERVAL_MS after the previous one.
   useEffect(() => {
     if (!isSignedIn) return;
+    let lastFocusReload = Date.now();
     const reload = () => void refresh();
+    const reloadOnFocus = () => {
+      if (Date.now() - lastFocusReload < FOCUS_RELOAD_INTERVAL_MS) return;
+      lastFocusReload = Date.now();
+      reload();
+    };
     window.addEventListener("eizoki:videos-changed", reload);
-    window.addEventListener("focus", reload);
+    window.addEventListener("focus", reloadOnFocus);
     return () => {
       window.removeEventListener("eizoki:videos-changed", reload);
-      window.removeEventListener("focus", reload);
+      window.removeEventListener("focus", reloadOnFocus);
     };
   }, [isSignedIn, refresh]);
 

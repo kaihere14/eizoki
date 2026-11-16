@@ -21,8 +21,8 @@ async function review(run: (reviewerId: string) => Promise<void>) {
     });
     return { error: "The change could not be saved. Please try again." };
   }
-  // The feed reads Postgres directly; the indexable pages and sitemap are
-  // cached, so they are refreshed along with the queue.
+  // The home feed, indexable pages and sitemap are cached, so they are
+  // refreshed along with the queue.
   invalidatePublicVideos();
   refresh();
   return { error: null };

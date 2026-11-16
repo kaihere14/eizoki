@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import type { VideoCategory, VideoMetadata } from "@/lib/videos";
 import { VIDEO_TAG_VALUES, type VideoTag } from "@/lib/video-tags";
 import {
+  listPublicCategories,
+  listPublicVideos,
   publicVideoWhere,
   toVideoMetadata,
   VIDEO_FEED_SELECT,
@@ -40,6 +42,23 @@ export async function getPublicVideoBySlug(
     select: VIDEO_FEED_SELECT,
   });
   return row ? toVideoMetadata(row) : null;
+}
+
+/**
+ * The first page of the home feed: featured videos first, then the newest.
+ * Cached so the home page is prerendered instead of rendered per visit.
+ */
+export async function listHomeFeedPage(limit: number) {
+  "use cache";
+  cachePublicVideos();
+  return listPublicVideos({ limit });
+}
+
+/** Categories with at least one public video, for the home category bar. */
+export async function listHomeFeedCategories(): Promise<VideoCategory[]> {
+  "use cache";
+  cachePublicVideos();
+  return listPublicCategories();
 }
 
 /** The newest public videos, optionally limited to one category or tag. */

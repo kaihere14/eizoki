@@ -8,7 +8,7 @@ import { CategoryBarSkeleton } from "@/components/category-bar";
 
 export const metadata = pageMetadata(PUBLIC_PAGES.home);
 
-export default function Home({ searchParams }: PageProps<"/">) {
+export default function Home() {
   return (
     <>
       <JsonLd data={pageGraph(PUBLIC_PAGES.home)} />
@@ -22,7 +22,7 @@ export default function Home({ searchParams }: PageProps<"/">) {
             </>
           }
         >
-          <PublicVideoFeed searchParams={searchParams} />
+          <PublicVideoFeed />
         </Suspense>
       </main>
     </>
