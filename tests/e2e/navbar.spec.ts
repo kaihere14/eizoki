@@ -17,7 +17,7 @@ for (const viewport of [
     test.use({ viewport });
 
     test.beforeEach(async ({ page }) => {
-      await page.route("**/api/videos?*", (route) =>
+      await page.route("**/api/feed?*", (route) =>
         route.fulfill({ json: { videos: [], nextCursor: null } }),
       );
       await page.goto("/");

@@ -58,7 +58,7 @@ async function signedIn(page: Page) {
       },
     }),
   );
-  await page.route("**/api/videos?*", (route) =>
+  await page.route("**/api/feed?*", (route) =>
     route.fulfill({ json: { videos: [], nextCursor: null } }),
   );
   await page.route("**/owned-fixture.webm", (route) =>

@@ -16,7 +16,7 @@ async function openFeed(
     avatarUrl?: string;
   },
 ) {
-  await page.route("**/api/videos?*", (route) =>
+  await page.route("**/api/feed?*", (route) =>
     route.fulfill({
       json: {
         videos: Array.from({ length: failed ? 1 : 40 }, (_, index) => ({
@@ -115,7 +115,7 @@ test("posters fill cards at once while at most three videos load at a time", asy
   })
     .webp()
     .toBuffer();
-  await page.route("**/api/videos?*", (route) =>
+  await page.route("**/api/feed?*", (route) =>
     route.fulfill({
       json: {
         videos: Array.from({ length: 24 }, (_, index) => ({

@@ -31,7 +31,7 @@ export async function fetchVideoFeed({
   if (cursor) query.set("cursor", cursor);
   if (category) query.set("category", category);
 
-  const response = await fetch(`/api/videos?${query.toString()}`, {
+  const response = await fetch(`/api/feed?${query.toString()}`, {
     signal,
     cache: "no-store",
     headers: { accept: "application/json" },
