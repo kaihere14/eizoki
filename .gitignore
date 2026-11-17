@@ -47,3 +47,6 @@ next-env.d.ts
 
 /lib/generated/prisma
 .env.local
+
+# local architecture diagrams
+/docs/architecture/
