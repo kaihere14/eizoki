@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const TABS = [
   { key: "videos", label: "Videos", href: "/admin/videos" },
@@ -7,19 +10,18 @@ const TABS = [
 
 export type AdminTab = (typeof TABS)[number]["key"];
 
-/** Switches between the two admin review queues; counts are pending items. */
-export function AdminTabs({
-  active,
-  counts,
-}: {
-  active: AdminTab;
-  counts: Record<AdminTab, number>;
-}) {
+/**
+ * Switches between the two admin review queues; counts are pending items.
+ * It lives in the admin layout, so switching tabs swaps only the queue below.
+ */
+export function AdminTabs({ counts }: { counts: Record<AdminTab, number> }) {
+  const pathname = usePathname();
+
   return (
-    <nav aria-label="Admin review" className="mb-8 flex justify-center">
+    <nav aria-label="Admin review" className="flex justify-center">
       <div className="inline-flex rounded-full border border-zinc-200/80 bg-zinc-50 p-1">
         {TABS.map((tab) => {
-          const current = tab.key === active;
+          const current = pathname.startsWith(tab.href);
           return (
             <Link
               key={tab.key}

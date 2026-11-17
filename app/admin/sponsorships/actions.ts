@@ -1,6 +1,6 @@
 "use server";
 
-import { updateTag } from "next/cache";
+import { refresh, updateTag } from "next/cache";
 import { ApiError } from "@/lib/api-error";
 import { requireUser } from "@/lib/services/current-user";
 import {
@@ -25,8 +25,10 @@ async function review(run: (reviewerId: string) => Promise<void>) {
     });
     return { error: "The change could not be saved. Please try again." };
   }
-  // Expire the cached navbar and feed sponsors immediately.
+  // Expire the cached navbar and feed sponsors immediately, and re-render
+  // the admin layout so the tab counts stay current.
   updateTag(SPONSORSHIP_CACHE_TAG);
+  refresh();
   return { error: null };
 }
 

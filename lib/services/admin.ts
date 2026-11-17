@@ -1,11 +1,13 @@
+import { cache } from "react";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 
 /**
  * Whether the signed-in account is an admin, for gating admin pages.
- * Privilege comes from Postgres, never the session.
+ * Privilege comes from Postgres, never the session. Cached per request, so
+ * the admin layout and page share one lookup.
  */
-export async function isAdminRequest() {
+export const isAdminRequest = cache(async () => {
   const { userId } = await auth();
   if (!userId) return false;
   const user = await prisma.user.findUnique({
@@ -13,4 +15,4 @@ export async function isAdminRequest() {
     select: { isAdmin: true, banned: true },
   });
   return user?.isAdmin === true && !user.banned;
-}
+});
